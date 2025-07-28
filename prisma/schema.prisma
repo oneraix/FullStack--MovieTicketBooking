@@ -1,0 +1,287 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model audit_logs {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  admin_id     String?   @db.Uuid
+  action       String?   @db.VarChar(255)
+  target_table String?   @db.VarChar(100)
+  target_id    String?   @db.Uuid
+  note         String?
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+  users        users?    @relation(fields: [admin_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model booking_seats {
+  id                                    Int       @id @default(autoincrement())
+  booking_id                            String?   @db.Uuid
+  seat_id                               Int?
+  price                                 Decimal?  @db.Decimal(10, 2)
+  is_active                             Boolean?  @default(true)
+  is_deleted                            Boolean?  @default(false)
+  created_at                            DateTime? @default(now()) @db.Timestamp(6)
+  updated_at                            DateTime? @db.Timestamp(6)
+  deleted_at                            DateTime? @db.Timestamp(6)
+  created_by                            String?   @db.Uuid
+  updated_by                            String?   @db.Uuid
+  deleted_by                            String?   @db.Uuid
+  bookings                              bookings? @relation(fields: [booking_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_booking_seats_created_byTousers users?    @relation("booking_seats_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_booking_seats_deleted_byTousers users?    @relation("booking_seats_deleted_byTousers", fields: [deleted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  seats                                 seats?    @relation(fields: [seat_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_booking_seats_updated_byTousers users?    @relation("booking_seats_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model bookings {
+  id                               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                          String?         @db.Uuid
+  showtime_id                      String?         @db.Uuid
+  status                           String?         @default("pending") @db.VarChar(20)
+  total_price                      Decimal?        @db.Decimal(10, 2)
+  is_active                        Boolean?        @default(true)
+  is_deleted                       Boolean?        @default(false)
+  created_at                       DateTime?       @default(now()) @db.Timestamp(6)
+  updated_at                       DateTime?       @db.Timestamp(6)
+  deleted_at                       DateTime?       @db.Timestamp(6)
+  created_by                       String?         @db.Uuid
+  updated_by                       String?         @db.Uuid
+  deleted_by                       String?         @db.Uuid
+  booking_seats                    booking_seats[]
+  users_bookings_created_byTousers users?          @relation("bookings_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_bookings_deleted_byTousers users?          @relation("bookings_deleted_byTousers", fields: [deleted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  showtimes                        showtimes?      @relation(fields: [showtime_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_bookings_updated_byTousers users?          @relation("bookings_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_bookings_user_idTousers    users?          @relation("bookings_user_idTousers", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payments                         payments[]
+}
+
+model bookmarks {
+  id                                Int       @id @default(autoincrement())
+  user_id                           String?   @db.Uuid
+  movie_id                          String?   @db.Uuid
+  is_active                         Boolean?  @default(true)
+  is_deleted                        Boolean?  @default(false)
+  created_at                        DateTime? @default(now()) @db.Timestamp(6)
+  updated_at                        DateTime? @db.Timestamp(6)
+  deleted_at                        DateTime? @db.Timestamp(6)
+  created_by                        String?   @db.Uuid
+  updated_by                        String?   @db.Uuid
+  deleted_by                        String?   @db.Uuid
+  users_bookmarks_created_byTousers users?    @relation("bookmarks_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_bookmarks_deleted_byTousers users?    @relation("bookmarks_deleted_byTousers", fields: [deleted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  movies                            movies?   @relation(fields: [movie_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_bookmarks_updated_byTousers users?    @relation("bookmarks_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_bookmarks_user_idTousers    users?    @relation("bookmarks_user_idTousers", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model cinemas {
+  id                              Int         @id @default(autoincrement())
+  name                            String      @db.VarChar(100)
+  location                        String
+  is_active                       Boolean?    @default(true)
+  is_deleted                      Boolean?    @default(false)
+  created_at                      DateTime?   @default(now()) @db.Timestamp(6)
+  updated_at                      DateTime?   @db.Timestamp(6)
+  deleted_at                      DateTime?   @db.Timestamp(6)
+  created_by                      String?     @db.Uuid
+  updated_by                      String?     @db.Uuid
+  deleted_by                      String?     @db.Uuid
+  users_cinemas_created_byTousers users?      @relation("cinemas_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_cinemas_deleted_byTousers users?      @relation("cinemas_deleted_byTousers", fields: [deleted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_cinemas_updated_byTousers users?      @relation("cinemas_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  seats                           seats[]
+  showtimes                       showtimes[]
+}
+
+model movies {
+  id                             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title                          String               @db.VarChar(255)
+  genre                          String?              @db.VarChar(100)
+  duration                       Int?
+  description                    String?
+  thumbnail                      String?
+  release_date                   DateTime?            @db.Date
+  is_showing                     Boolean?             @default(true)
+  is_active                      Boolean?             @default(true)
+  is_deleted                     Boolean?             @default(false)
+  created_at                     DateTime?            @default(now()) @db.Timestamp(6)
+  updated_at                     DateTime?            @db.Timestamp(6)
+  deleted_at                     DateTime?            @db.Timestamp(6)
+  created_by                     String?              @db.Uuid
+  updated_by                     String?              @db.Uuid
+  deleted_by                     String?              @db.Uuid
+  bookmarks                      bookmarks[]
+  users_movies_created_byTousers users?               @relation("movies_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_movies_deleted_byTousers users?               @relation("movies_deleted_byTousers", fields: [deleted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_movies_updated_byTousers users?               @relation("movies_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  showtimes                      showtimes[]
+  user_watch_history             user_watch_history[]
+}
+
+model notifications {
+  id                                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                               String?   @db.Uuid
+  content                               String?
+  is_read                               Boolean?  @default(false)
+  is_active                             Boolean?  @default(true)
+  is_deleted                            Boolean?  @default(false)
+  created_at                            DateTime? @default(now()) @db.Timestamp(6)
+  updated_at                            DateTime? @db.Timestamp(6)
+  deleted_at                            DateTime? @db.Timestamp(6)
+  created_by                            String?   @db.Uuid
+  updated_by                            String?   @db.Uuid
+  deleted_by                            String?   @db.Uuid
+  users_notifications_created_byTousers users?    @relation("notifications_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_notifications_deleted_byTousers users?    @relation("notifications_deleted_byTousers", fields: [deleted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_notifications_updated_byTousers users?    @relation("notifications_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_notifications_user_idTousers    users?    @relation("notifications_user_idTousers", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model payments {
+  id                               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  booking_id                       String?   @db.Uuid
+  method                           String?   @db.VarChar(50)
+  status                           String?   @db.VarChar(20)
+  transaction_id                   String?
+  is_active                        Boolean?  @default(true)
+  is_deleted                       Boolean?  @default(false)
+  created_at                       DateTime? @default(now()) @db.Timestamp(6)
+  updated_at                       DateTime? @db.Timestamp(6)
+  deleted_at                       DateTime? @db.Timestamp(6)
+  created_by                       String?   @db.Uuid
+  updated_by                       String?   @db.Uuid
+  deleted_by                       String?   @db.Uuid
+  bookings                         bookings? @relation(fields: [booking_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_payments_created_byTousers users?    @relation("payments_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_payments_deleted_byTousers users?    @relation("payments_deleted_byTousers", fields: [deleted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_payments_updated_byTousers users?    @relation("payments_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model roles {
+  id    Int     @id @default(autoincrement())
+  name  String  @unique @db.VarChar(50)
+  users users[]
+}
+
+model seats {
+  id                            Int             @id @default(autoincrement())
+  cinema_id                     Int?
+  seat_number                   String?         @db.VarChar(10)
+  seat_type                     String?         @db.VarChar(20)
+  is_active                     Boolean?        @default(true)
+  is_deleted                    Boolean?        @default(false)
+  created_at                    DateTime?       @default(now()) @db.Timestamp(6)
+  updated_at                    DateTime?       @db.Timestamp(6)
+  deleted_at                    DateTime?       @db.Timestamp(6)
+  created_by                    String?         @db.Uuid
+  updated_by                    String?         @db.Uuid
+  deleted_by                    String?         @db.Uuid
+  booking_seats                 booking_seats[]
+  cinemas                       cinemas?        @relation(fields: [cinema_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_seats_created_byTousers users?          @relation("seats_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_seats_deleted_byTousers users?          @relation("seats_deleted_byTousers", fields: [deleted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_seats_updated_byTousers users?          @relation("seats_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model showtimes {
+  id                                String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  movie_id                          String?    @db.Uuid
+  cinema_id                         Int?
+  show_date                         DateTime   @db.Date
+  show_time                         DateTime   @db.Time(6)
+  is_active                         Boolean?   @default(true)
+  is_deleted                        Boolean?   @default(false)
+  created_at                        DateTime?  @default(now()) @db.Timestamp(6)
+  updated_at                        DateTime?  @db.Timestamp(6)
+  deleted_at                        DateTime?  @db.Timestamp(6)
+  created_by                        String?    @db.Uuid
+  updated_by                        String?    @db.Uuid
+  deleted_by                        String?    @db.Uuid
+  bookings                          bookings[]
+  cinemas                           cinemas?   @relation(fields: [cinema_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_showtimes_created_byTousers users?     @relation("showtimes_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_showtimes_deleted_byTousers users?     @relation("showtimes_deleted_byTousers", fields: [deleted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  movies                            movies?    @relation(fields: [movie_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_showtimes_updated_byTousers users?     @relation("showtimes_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model user_watch_history {
+  id                                         Int       @id @default(autoincrement())
+  user_id                                    String?   @db.Uuid
+  movie_id                                   String?   @db.Uuid
+  watched_at                                 DateTime? @default(now()) @db.Timestamp(6)
+  is_active                                  Boolean?  @default(true)
+  is_deleted                                 Boolean?  @default(false)
+  created_at                                 DateTime? @default(now()) @db.Timestamp(6)
+  updated_at                                 DateTime? @db.Timestamp(6)
+  deleted_at                                 DateTime? @db.Timestamp(6)
+  created_by                                 String?   @db.Uuid
+  updated_by                                 String?   @db.Uuid
+  deleted_by                                 String?   @db.Uuid
+  users_user_watch_history_created_byTousers users?    @relation("user_watch_history_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_user_watch_history_deleted_byTousers users?    @relation("user_watch_history_deleted_byTousers", fields: [deleted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  movies                                     movies?   @relation(fields: [movie_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_user_watch_history_updated_byTousers users?    @relation("user_watch_history_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_user_watch_history_user_idTousers    users?    @relation("user_watch_history_user_idTousers", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model users {
+  id                                                      String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                                                    String               @db.VarChar(100)
+  email                                                   String               @unique @db.VarChar(255)
+  password                                                String               @db.VarChar(255)
+  phone                                                   String?              @db.VarChar(20)
+  avatar                                                  String?
+  role_id                                                 Int?                 @default(2)
+  is_active                                               Boolean?             @default(true)
+  is_deleted                                              Boolean?             @default(false)
+  created_at                                              DateTime?            @default(now()) @db.Timestamp(6)
+  updated_at                                              DateTime?            @db.Timestamp(6)
+  deleted_at                                              DateTime?            @db.Timestamp(6)
+  created_by                                              String?              @db.Uuid
+  updated_by                                              String?              @db.Uuid
+  deleted_by                                              String?              @db.Uuid
+  audit_logs                                              audit_logs[]
+  booking_seats_booking_seats_created_byTousers           booking_seats[]      @relation("booking_seats_created_byTousers")
+  booking_seats_booking_seats_deleted_byTousers           booking_seats[]      @relation("booking_seats_deleted_byTousers")
+  booking_seats_booking_seats_updated_byTousers           booking_seats[]      @relation("booking_seats_updated_byTousers")
+  bookings_bookings_created_byTousers                     bookings[]           @relation("bookings_created_byTousers")
+  bookings_bookings_deleted_byTousers                     bookings[]           @relation("bookings_deleted_byTousers")
+  bookings_bookings_updated_byTousers                     bookings[]           @relation("bookings_updated_byTousers")
+  bookings_bookings_user_idTousers                        bookings[]           @relation("bookings_user_idTousers")
+  bookmarks_bookmarks_created_byTousers                   bookmarks[]          @relation("bookmarks_created_byTousers")
+  bookmarks_bookmarks_deleted_byTousers                   bookmarks[]          @relation("bookmarks_deleted_byTousers")
+  bookmarks_bookmarks_updated_byTousers                   bookmarks[]          @relation("bookmarks_updated_byTousers")
+  bookmarks_bookmarks_user_idTousers                      bookmarks[]          @relation("bookmarks_user_idTousers")
+  cinemas_cinemas_created_byTousers                       cinemas[]            @relation("cinemas_created_byTousers")
+  cinemas_cinemas_deleted_byTousers                       cinemas[]            @relation("cinemas_deleted_byTousers")
+  cinemas_cinemas_updated_byTousers                       cinemas[]            @relation("cinemas_updated_byTousers")
+  movies_movies_created_byTousers                         movies[]             @relation("movies_created_byTousers")
+  movies_movies_deleted_byTousers                         movies[]             @relation("movies_deleted_byTousers")
+  movies_movies_updated_byTousers                         movies[]             @relation("movies_updated_byTousers")
+  notifications_notifications_created_byTousers           notifications[]      @relation("notifications_created_byTousers")
+  notifications_notifications_deleted_byTousers           notifications[]      @relation("notifications_deleted_byTousers")
+  notifications_notifications_updated_byTousers           notifications[]      @relation("notifications_updated_byTousers")
+  notifications_notifications_user_idTousers              notifications[]      @relation("notifications_user_idTousers")
+  payments_payments_created_byTousers                     payments[]           @relation("payments_created_byTousers")
+  payments_payments_deleted_byTousers                     payments[]           @relation("payments_deleted_byTousers")
+  payments_payments_updated_byTousers                     payments[]           @relation("payments_updated_byTousers")
+  seats_seats_created_byTousers                           seats[]              @relation("seats_created_byTousers")
+  seats_seats_deleted_byTousers                           seats[]              @relation("seats_deleted_byTousers")
+  seats_seats_updated_byTousers                           seats[]              @relation("seats_updated_byTousers")
+  showtimes_showtimes_created_byTousers                   showtimes[]          @relation("showtimes_created_byTousers")
+  showtimes_showtimes_deleted_byTousers                   showtimes[]          @relation("showtimes_deleted_byTousers")
+  showtimes_showtimes_updated_byTousers                   showtimes[]          @relation("showtimes_updated_byTousers")
+  user_watch_history_user_watch_history_created_byTousers user_watch_history[] @relation("user_watch_history_created_byTousers")
+  user_watch_history_user_watch_history_deleted_byTousers user_watch_history[] @relation("user_watch_history_deleted_byTousers")
+  user_watch_history_user_watch_history_updated_byTousers user_watch_history[] @relation("user_watch_history_updated_byTousers")
+  user_watch_history_user_watch_history_user_idTousers    user_watch_history[] @relation("user_watch_history_user_idTousers")
+  roles                                                   roles?               @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
