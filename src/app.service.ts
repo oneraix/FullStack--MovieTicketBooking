@@ -1,8 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { IOREDIS_CLIENT } from 'src/common/redis/redis.provider';
+import Redis from 'ioredis';
 
 @Injectable()
 export class AppService {
-  getHello(): string {
-    return 'Hello World!';
-  }
+  constructor(
+    @Inject(IOREDIS_CLIENT) private readonly redisClient: Redis,
+  ) {}
 }
