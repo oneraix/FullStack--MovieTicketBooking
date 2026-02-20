@@ -1,16 +1,22 @@
 // token.service.ts
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { ConfigType } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import {
+import { 
   ACCESS_TOKEN_EXPIRES,
   ACCESS_TOKEN_SECRET,
   REFRESH_TOKEN_EXPIRES,
   REFRESH_TOKEN_SECRET,
 } from 'src/common/constant/app.constant';
+import jwtConfig from 'src/config/jwt.config';
 
 @Injectable()
 export class TokenService {
-  constructor(private readonly jwt: JwtService) {}
+  constructor(
+    private readonly jwt: JwtService,
+    @Inject(jwtConfig.KEY)
+    private readonly config: ConfigType<typeof jwtConfig>
+  ) {}
 
   private buildPayload(user: any) {
     return {
@@ -21,22 +27,28 @@ export class TokenService {
     };
   }
 
-  createTokens(user: any) {
+  async createTokens(user: any) {
     if (!user?.id && !user?.userId) {
       throw new Error('Không có userId để tạo token');
     }
 
     const payload = this.buildPayload(user);
 
-    const accessToken = this.jwt.sign(payload, {
-      secret: ACCESS_TOKEN_SECRET,
-      expiresIn: ACCESS_TOKEN_EXPIRES,
-    });
+    //Dùng Promise.all để ký 2 token song song (nhanh hơn gấp đôi)
+    const [accessToken, refreshToken] = await Promise.all([
+      //tạo token
+      this.jwt.signAsync(payload, {
+        secret: this.config.accessTokenSecret,
+        expiresIn: this.config.accessTokenExpires,
+      }),
 
-    const refreshToken = this.jwt.sign(payload, {
-      secret: REFRESH_TOKEN_SECRET,
-      expiresIn: REFRESH_TOKEN_EXPIRES,
-    });
+      //tạo refresh token
+      this.jwt.signAsync(payload, {
+        secret: this.config.refreshTokenSecret,
+        expiresIn: this.config.refreshTokenExpires,
+      })
+    ]);
+
 
     return {
       accessToken,
@@ -44,16 +56,23 @@ export class TokenService {
     };
   }
 
-  verifyAccessToken(token: string, ignoreExpiration = false) {
-    return this.jwt.verify(token, {
-      secret: ACCESS_TOKEN_SECRET,
-      ignoreExpiration,
+   async verifyAccessToken(token: string) {
+    try{
+    return await this.jwt.verifyAsync(token, {
+      secret: this.config.accessTokenSecret,
     });
+    }catch(error){
+      throw error;
+    }
   }
 
-  verifyRefreshToken(token: string) {
-    return this.jwt.verify(token, {
-      secret: REFRESH_TOKEN_SECRET,
+  async verifyRefreshToken(token: string) {
+    try{
+    return await this.jwt.verifyAsync(token, {
+      secret: this.config.refreshTokenSecret,
     });
+    }catch(error){
+      throw error;
+    }
   }
 }
