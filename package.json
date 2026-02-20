@@ -39,6 +39,7 @@
     "class-validator": "^0.14.2",
     "dotenv": "^17.2.0",
     "ioredis": "^5.7.0",
+    "joi": "^18.0.2",
     "passport-jwt": "^4.0.1",
     "prisma": "^6.11.1",
     "reflect-metadata": "^0.2.2",
