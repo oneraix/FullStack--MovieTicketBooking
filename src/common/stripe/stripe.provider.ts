@@ -1,4 +1,3 @@
-import { STRIPE_SECRET_KEY } from '../constant/app.constant';
 import Stripe from 'stripe';
 import { STRIPE_CLIENT } from './stripe.constant';
 import { ConfigType } from '@nestjs/config';
