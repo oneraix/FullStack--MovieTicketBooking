@@ -1,4 +1,4 @@
-import'dotenv/config' 
+import 'dotenv/config'
 //database
 export const DATABASE_URL = process.env.DATABASE_URL;
 
@@ -12,10 +12,7 @@ export const REFRESH_TOKEN_EXPIRES = process.env.REFRESH_TOKEN_EXPIRES
 export const HOLD_TTL_SECONDS = Number(process.env.HOLD_TTL_SECONDS) || 600;
 
 //stripe
-export const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY ||''
-export const STRIPE_SECRET_WEBHOOK = process.env.STRIPE_SECRET_WEBHOOK ||''
+export const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || ''
+export const STRIPE_SECRET_WEBHOOK = process.env.STRIPE_SECRET_WEBHOOK || ''
 
 //log debug
-console.log({
-    DATABASE_URL
-})
