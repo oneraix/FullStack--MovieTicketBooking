@@ -64,6 +64,11 @@ export class PaymentsService {
       metadata: {
         booking_id: dto.booking_id,
       },
+      payment_intent_data:{
+        metadata:{
+          booking_id: dto.booking_id,
+        },
+      },
       // Tự động expire session sau 30 phút
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
     });
@@ -140,7 +145,7 @@ export class PaymentsService {
   }
 
   async getCheckoutSessionStatus(sessionId: string, userId: string) {
-    const session = await this.stripeService.retriveCheckoutSession(sessionId);
+    const session = await this.stripeService.retrieveCheckoutSession(sessionId);
 
     const bookingId = session.metadata?.booking_id;
     if (!bookingId) {

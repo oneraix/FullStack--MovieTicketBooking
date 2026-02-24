@@ -6,12 +6,15 @@ import { STRIPE_SECRET_WEBHOOK } from 'src/common/constant/app.constant';
 import { Inject } from '@nestjs/common';
 import { STRIPE_CLIENT } from 'src/common/stripe/stripe.constant';
 import { PrismaService } from 'src/modules/prisma/prisma.service';
+import { ConfigType } from '@nestjs/config';
+import stripeConfig from 'src/config/stripe.config';
 
 @Injectable()
 export class WebhookService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(STRIPE_CLIENT) private readonly stripe: Stripe,
+    @Inject(stripeConfig.KEY) private readonly stripeCfg: ConfigType<typeof stripeConfig>,
   ) { }
 
   async handleEvent(signature: string, rawBody: Buffer) {
@@ -20,11 +23,16 @@ export class WebhookService {
     }
 
     let event: Stripe.Event;//khởi tạo stripe
+    
+    const webHookSecret = this.stripeCfg.webHookSecret;//lấy webHookSecret
+    if(!webHookSecret){
+      throw new  Error('Missing Stripe Webhook Secret');
+    }
     try {
       event = this.stripe.webhooks.constructEvent(
         rawBody,
         signature,
-        STRIPE_SECRET_WEBHOOK,
+        webHookSecret,
       );
     } catch (err) {
       throw new BadRequestException('Invalid Stripe Signature');//lỗi signature không hợp lệ đổi từ 500 thành 400

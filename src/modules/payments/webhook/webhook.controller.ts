@@ -31,7 +31,8 @@ export class WebhookController {
       await this.webhookService.handleEvent(sig as string, rawBody);
       return res.send({ received: true });
     } catch (err) {
-      console.error('❌ Webhook error:', err.message);
+      const message = err instanceof Error? err.message : 'Unknown error';
+      console.error('❌ Error processing Stripe webhook:', message);  
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
   }
