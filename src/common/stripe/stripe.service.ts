@@ -10,7 +10,7 @@ export class StripeService {
     return await this.stripe.checkout.sessions.create(params);
   }
 
-  async retriveCheckoutSession(sessionId:string){
+  async retrieveCheckoutSession(sessionId:string){
     return this.stripe.checkout.sessions.retrieve(sessionId);
   }
 }
