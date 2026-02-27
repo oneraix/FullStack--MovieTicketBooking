@@ -1,13 +1,14 @@
 // src/modules/payments/webhook.service.ts
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import Stripe from 'stripe';
-
-import { STRIPE_SECRET_WEBHOOK } from 'src/common/constant/app.constant';
 import { Inject } from '@nestjs/common';
 import { STRIPE_CLIENT } from 'src/common/stripe/stripe.constant';
 import { PrismaService } from 'src/modules/prisma/prisma.service';
 import { ConfigType } from '@nestjs/config';
 import stripeConfig from 'src/config/stripe.config';
+import { IOREDIS_CLIENT } from 'src/common/redis/redis.provider';
+import Redis from 'ioredis';
+import { BookingHoldService } from 'src/modules/booking/booking-hold.service';
 
 @Injectable()
 export class WebhookService {
@@ -15,18 +16,22 @@ export class WebhookService {
     private readonly prisma: PrismaService,
     @Inject(STRIPE_CLIENT) private readonly stripe: Stripe,
     @Inject(stripeConfig.KEY) private readonly stripeCfg: ConfigType<typeof stripeConfig>,
+    private readonly bookingHoldService: BookingHoldService
   ) { }
 
+
+
   async handleEvent(signature: string, rawBody: Buffer) {
-    if (!signature) {
-      throw new BadRequestException('Missing Stripe Signature');// kiểm tra có signatur không
+
+    if (!signature) {// kiểm tra có signatur không
+      throw new BadRequestException('Không tìm thấy signature');
     }
 
     let event: Stripe.Event;//khởi tạo stripe
-    
+
     const webHookSecret = this.stripeCfg.webHookSecret;//lấy webHookSecret
-    if(!webHookSecret){
-      throw new  Error('Missing Stripe Webhook Secret');
+    if (!webHookSecret) {
+      throw new Error('Không tìm thấy signature');
     }
     try {
       event = this.stripe.webhooks.constructEvent(
@@ -35,7 +40,7 @@ export class WebhookService {
         webHookSecret,
       );
     } catch (err) {
-      throw new BadRequestException('Invalid Stripe Signature');//lỗi signature không hợp lệ đổi từ 500 thành 400
+      throw new BadRequestException('Stripe signature không hợp lệ');//lỗi signature không hợp lệ đổi từ 500 thành 400
     }
 
     if (event.type === 'checkout.session.completed') {
@@ -46,7 +51,7 @@ export class WebhookService {
 
       const bookingId = session.metadata?.booking_id;
 
-      if (!bookingId) throw new BadRequestException('Missing booking_id in metadata');//đảm bảo có booking_id
+      if (!bookingId) throw new BadRequestException('Không tìm thấy booking_id');//đảm bảo có booking_id
 
       const booking = await this.prisma.bookings.findUnique({
         where: { id: bookingId }
@@ -73,6 +78,7 @@ export class WebhookService {
           },
         }),
       ]);
+      await this.bookingHoldService.deleteBookingHold(bookingId);// xoa booking hold sau khi thanh toán thánh công
       return;
       // await this.prisma.bookings.update({
       //   where: { id: bookingId },
@@ -97,7 +103,24 @@ export class WebhookService {
             updated_at: new Date(),
           },
         });
+        await this.bookingHoldService.releaseBookingHold(bookingId);// nhả ghế nếu thanh toán thấp bại
       }
+      return;
+    }
+
+    //thêm logic xử lí booking và nhả ghế nếu hết hạn thời gian thanh toán
+    if (event.type === 'checkout.session.expired') {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const bookingId = session.metadata?.booking_id;
+      if (!bookingId) return;
+
+      await this.prisma.bookings.updateMany({
+        where: { id: bookingId, status: 'pending' },
+        data: { status: 'expired', updated_at: new Date() },
+      });
+
+      await this.bookingHoldService.releaseBookingHold(bookingId);
+
       return;
     }
 

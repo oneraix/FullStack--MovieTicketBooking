@@ -45,7 +45,7 @@ export class BookingsService {
         show_date: true,
         show_time: true,
         base_price: true,
-        room_id: true,
+        room_id: true, //dùng để validation tránh việc tạo booking cho ghế không tồn tại trong phòng
       },
     });
 

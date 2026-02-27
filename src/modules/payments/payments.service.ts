@@ -36,11 +36,15 @@ export class PaymentsService {
     });
 
     if (!booking || booking.user_id !== userId) {
-      throw new NotFoundException('Booking not found');
+      throw new NotFoundException('Booking không tồn tại');
     }
 
     if (booking.status !== 'pending') {
-      throw new NotFoundException('Booking is not in pending state');
+      throw new NotFoundException('Booking không đang chờ thanh toán');
+    }
+
+    if(!booking.booking_seats.length) {
+      throw new NotFoundException('Booking không có danh sách ghế');
     }
 
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] =
@@ -149,7 +153,7 @@ export class PaymentsService {
 
     const bookingId = session.metadata?.booking_id;
     if (!bookingId) {
-      throw new NotFoundException('Booking not found');
+      throw new NotFoundException('Booking không tồn tại');
     }
 
     const booking = await this.prisma.bookings.findUnique({
@@ -162,8 +166,12 @@ export class PaymentsService {
     });
 
     if (!booking || booking.user_id !== userId) {
-      throw new NotFoundException('Booking not found');
+      throw new NotFoundException('Booking không tồn tại');
     }
+
+    // if(!booking.booking_seats.length) {
+    //   throw new NotFoundException('Booking rỗng');
+    // }
 
     return {
       sessionId: session.id,
