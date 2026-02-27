@@ -6,56 +6,26 @@ import { UpdateBookingDto } from './dto/update-booking.dto';
 import { HOLD_TTL_SECONDS } from 'src/common/constant/app.constant';
 import { IOREDIS_CLIENT } from 'src/common/redis/redis.provider';
 import Redis from 'ioredis';
+import { BookingHoldService } from './booking-hold.service';
 
 
 @Injectable()
 export class BookingsService {
 
   //script Lua for redis
-  private readonly SAFE_RELEASE_LUA_SCRIPT =`
-  if redis.call("get",KEYS[1]) == ARGV[1] then
-    return redis.call("del",KEYS[1])
-    else
-    return 0
-  end
-  `;
+  // private readonly SAFE_RELEASE_LUA_SCRIPT =`
+  // if redis.call("get",KEYS[1]) == ARGV[1] then
+  //   return redis.call("del",KEYS[1])
+  //   else
+  //   return 0
+  // end
+  // `;
 
-  constructor(private prisma: PrismaService,
-     @Inject(IOREDIS_CLIENT) private readonly redisClient: Redis
-    ) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly bookingHoldService: BookingHoldService 
+  ) {}
   
-  private async cacheSetJSON(key: string, value: unknown, ttlSeconds: number) {
-    await this.redisClient.set(key, JSON.stringify(value), 'EX', ttlSeconds);
-  }
-  private async cacheGetJSON<T = unknown>(key: string): Promise<T | undefined> {
-    const raw = await this.redisClient.get(key);
-    return raw ? (JSON.parse(raw) as T) : undefined;
-  }
-
-
-  async holdSeats(showtimeId: string, seatIds: number[], userId: string) {
-    const ttl = Number(HOLD_TTL_SECONDS) || 300;
-
-    // Dùng pipeline để giữ nhiều ghế 1 lúc
-    const pipe = this.redisClient.multi();
-    for (const seatId of seatIds) {
-      const key = `hold:${showtimeId}:${seatId}`;
-      //pipe.set('SET', key, userId, 'NX', 'EX', ttl); // SET NX EX <ttl>
-      (pipe as any).call('SET', key, userId, 'NX', 'EX', String(ttl));
-    }
-    const results = await pipe.exec();
-
-    // Nếu có ghế không lock được → rollback các key đã set và báo lỗi
-    const failed = results?.some((r) => r == null || r[1] !== 'OK');
-    if (failed) {
-      const cleanup = this.redisClient.multi();
-      for (const seatId of seatIds) {
-        cleanup.del(`hold:${showtimeId}:${seatId}`);
-      }
-      await cleanup.exec();
-      throw new BadRequestException('Một hoặc nhiều ghế đang được giữ bởi người khác');
-    }
-  }
 
   private async calculateTotalPriceAndSeatData(
     showtimeId: string,
@@ -75,11 +45,16 @@ export class BookingsService {
         show_date: true,
         show_time: true,
         base_price: true,
+        room_id: true,
       },
     });
 
     if (!showtime) {
       throw new NotFoundException('Showtime không tồn tại');
+    }
+
+    if(!showtime.room_id){
+      throw new BadRequestException('Phòng chiếu không tồn tại');
     }
 
     const dayOfWeek = new Date(showtime.show_date).getDay();
@@ -98,7 +73,7 @@ export class BookingsService {
     const basePrice = showtime.base_price?.toNumber() || 0;
 
     const seats = await this.prisma.seats.findMany({
-      where: { id: { in: seatIds }, is_deleted: false },
+      where: { id: { in: seatIds }, is_deleted: false, room_id:showtime.room_id },
       include: { seat_types: true },
     });
 
@@ -121,11 +96,24 @@ export class BookingsService {
     return { total_price, bookingSeatData };
   }
 
+  //create tạo booking(pending), booking_seats, giữ ghế bằng redis seatHold -> Paymentservice tạo session checkout -> webhook
    async create(dto: CreateBookingDto, userId: string) {
     const { showtime_id, seat_ids } = dto;
-    const { total_price, bookingSeatData } =
-      await this.calculateTotalPriceAndSeatData(showtime_id, seat_ids, userId);
 
+    //bắt lỗi trùng ids ghế (1)
+    const uniq = Array.from(new Set(seat_ids));
+    if (uniq.length !== seat_ids.length) {
+      throw new BadRequestException('Ghế bị trùng');
+    }
+
+    //tính tống tien (2)
+    const { total_price, bookingSeatData } =
+    await this.calculateTotalPriceAndSeatData(showtime_id, seat_ids, userId);
+
+
+    // giữ ghế trước khi truy vấn database (3)
+    await this.bookingHoldService.holdSeats(showtime_id, seat_ids, userId);
+    try{
     const bookedSeats = await this.prisma.booking_seats.findMany({
       where: {
         seat_id: { in: seat_ids },
@@ -140,8 +128,7 @@ export class BookingsService {
       throw new BadRequestException(`Seat ${ids} is already booked`);
     }
 
-    await this.holdSeats(showtime_id, seat_ids, userId);
-
+    //tạo booking (4)
     const createdBooking = await this.prisma.bookings.create({
       data: {
         showtime_id,
@@ -150,46 +137,68 @@ export class BookingsService {
         created_by: userId,
         booking_seats: { create: bookingSeatData },
       },
-      include: { booking_seats: true },
+      include:{booking_seats: true},
     });
-    //dùng redisClient helper + JSON + TTL tính bằng giây
-    await this.cacheSetJSON(
-      `booking:${createdBooking.id}:seats`,
-      seat_ids,
-      Number(HOLD_TTL_SECONDS) || 300,
-    );
 
-    return createdBooking;
+await this.bookingHoldService.cacheBookingHold(createdBooking.id, {
+  showtimeId: showtime_id,
+  seatIds: seat_ids,
+  userId,
+});
+    return createdBooking; 
+  } catch(e){
+    await this.bookingHoldService.releaseSeats(showtime_id, seat_ids, userId);// nếu lỗi thì release toan bo ghe của booking
+    throw e;
   }
 
 
 
-  async confirmPayment(bookingId: string, userId: string) {
-    const booking = await this.prisma.bookings.findUnique({ where: { id: bookingId } });
-    if (!booking) throw new NotFoundException('Booking not found');
-    if (booking.user_id !== userId) throw new ForbiddenException('Forbidden');
-    if (booking.status !== 'pending') throw new BadRequestException('Booking is not pending');
+    // const createdBooking = await this.prisma.bookings.create({
+    //   data: {
+    //     showtime_id,
+    //     user_id: userId,
+    //     total_price,
+    //     created_by: userId,
+    //     booking_seats: { create: bookingSeatData },
+    //   },
+    //   include: { booking_seats: true },
+    // });
+    // //dùng redisClient helper + JSON + TTL tính bằng giây
+    // await this.cacheSetJSON(
+    //   `booking:${createdBooking.id}:seats`,
+    //   seat_ids,
+    //   Number(HOLD_TTL_SECONDS) || 300,
+    // );
 
-    const seatIds = await this.cacheGetJSON<number[]>(`booking:${bookingId}:seats`);
-    if (!seatIds?.length) throw new BadRequestException('No held seats found for this booking');
-
-    if (!booking.showtime_id) throw new BadRequestException('Showtime ID is missing from booking');
-
-    const { total_price, bookingSeatData } =
-      await this.calculateTotalPriceAndSeatData(booking.showtime_id, seatIds, userId);
-
-    await this.prisma.booking_seats.createMany({ data: bookingSeatData });
-
-    return this.prisma.bookings.update({
-      where: { id: bookingId },
-      data: {
-        status: 'success',
-        total_price,
-        updated_at: new Date(),
-        updated_by: userId,
-      },
-    });
+    // return createdBooking;
   }
+
+  // async confirmPayment(bookingId: string, userId: string) {
+  //   const booking = await this.prisma.bookings.findUnique({ where: { id: bookingId } });
+  //   if (!booking) throw new NotFoundException('Booking not found');
+  //   if (booking.user_id !== userId) throw new ForbiddenException('Forbidden');
+  //   if (booking.status !== 'pending') throw new BadRequestException('Booking is not pending');
+
+  //   const seatIds = await this.cacheGetJSON<number[]>(`booking:${bookingId}:seats`);
+  //   if (!seatIds?.length) throw new BadRequestException('No held seats found for this booking');
+
+  //   if (!booking.showtime_id) throw new BadRequestException('Showtime ID is missing from booking');
+
+  //   const { total_price, bookingSeatData } =
+  //   await this.calculateTotalPriceAndSeatData(booking.showtime_id, seatIds, userId);
+
+  //   //await this.prisma.booking_seats.createMany({ data: bookingSeatData });
+
+  //   return this.prisma.bookings.update({
+  //     where: { id: bookingId },
+  //     data: {
+  //       status: 'success',
+  //       total_price,
+  //       updated_at: new Date(),
+  //       updated_by: userId,
+  //     },
+  //   });
+  // }
 
 
 
