@@ -9,4 +9,8 @@ export class StripeService {
   async createCheckoutSession(params: Stripe.Checkout.SessionCreateParams) {
     return await this.stripe.checkout.sessions.create(params);
   }
+
+  async retrieveCheckoutSession(sessionId:string){
+    return this.stripe.checkout.sessions.retrieve(sessionId);
+  }
 }

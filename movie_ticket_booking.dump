@@ -1,0 +1,1766 @@
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 17.5
+-- Dumped by pg_dump version 17.0
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: audit_logs; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.audit_logs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    admin_id uuid,
+    action character varying(255),
+    target_table character varying(100),
+    target_id uuid,
+    note text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.audit_logs OWNER TO postgres;
+
+--
+-- Name: booking_seats; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.booking_seats (
+    id integer NOT NULL,
+    booking_id uuid,
+    seat_id integer,
+    price numeric(10,2),
+    is_active boolean DEFAULT true,
+    is_deleted boolean DEFAULT false,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone,
+    deleted_at timestamp without time zone,
+    created_by uuid,
+    updated_by uuid,
+    deleted_by uuid
+);
+
+
+ALTER TABLE public.booking_seats OWNER TO postgres;
+
+--
+-- Name: booking_seats_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.booking_seats_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.booking_seats_id_seq OWNER TO postgres;
+
+--
+-- Name: booking_seats_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.booking_seats_id_seq OWNED BY public.booking_seats.id;
+
+
+--
+-- Name: bookings; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bookings (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid,
+    showtime_id uuid,
+    status character varying(20) DEFAULT 'pending'::character varying,
+    total_price numeric(10,2),
+    is_active boolean DEFAULT true,
+    is_deleted boolean DEFAULT false,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone,
+    deleted_at timestamp without time zone,
+    created_by uuid,
+    updated_by uuid,
+    deleted_by uuid
+);
+
+
+ALTER TABLE public.bookings OWNER TO postgres;
+
+--
+-- Name: bookmarks; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bookmarks (
+    id integer NOT NULL,
+    user_id uuid,
+    movie_id uuid,
+    is_active boolean DEFAULT true,
+    is_deleted boolean DEFAULT false,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone,
+    deleted_at timestamp without time zone,
+    created_by uuid,
+    updated_by uuid,
+    deleted_by uuid
+);
+
+
+ALTER TABLE public.bookmarks OWNER TO postgres;
+
+--
+-- Name: bookmarks_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.bookmarks_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.bookmarks_id_seq OWNER TO postgres;
+
+--
+-- Name: bookmarks_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.bookmarks_id_seq OWNED BY public.bookmarks.id;
+
+
+--
+-- Name: cinemas; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.cinemas (
+    id integer NOT NULL,
+    name character varying(100) NOT NULL,
+    location text NOT NULL,
+    is_active boolean DEFAULT true,
+    is_deleted boolean DEFAULT false,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone,
+    deleted_at timestamp without time zone,
+    created_by uuid,
+    updated_by uuid,
+    deleted_by uuid
+);
+
+
+ALTER TABLE public.cinemas OWNER TO postgres;
+
+--
+-- Name: cinemas_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.cinemas_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.cinemas_id_seq OWNER TO postgres;
+
+--
+-- Name: cinemas_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.cinemas_id_seq OWNED BY public.cinemas.id;
+
+
+--
+-- Name: movie_genres; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.movie_genres (
+    id integer NOT NULL,
+    name character varying(100) NOT NULL,
+    description text,
+    is_active boolean DEFAULT true,
+    is_deleted boolean DEFAULT false,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone,
+    deleted_at timestamp without time zone,
+    created_by uuid,
+    updated_by uuid,
+    deleted_by uuid
+);
+
+
+ALTER TABLE public.movie_genres OWNER TO postgres;
+
+--
+-- Name: movie_genres_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.movie_genres_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.movie_genres_id_seq OWNER TO postgres;
+
+--
+-- Name: movie_genres_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.movie_genres_id_seq OWNED BY public.movie_genres.id;
+
+
+--
+-- Name: movie_movie_genres; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.movie_movie_genres (
+    movie_id uuid NOT NULL,
+    genre_id integer NOT NULL
+);
+
+
+ALTER TABLE public.movie_movie_genres OWNER TO postgres;
+
+--
+-- Name: movies; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.movies (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    title character varying(255) NOT NULL,
+    duration integer,
+    description text,
+    thumbnail text,
+    release_date date,
+    is_showing boolean DEFAULT true,
+    is_active boolean DEFAULT true,
+    is_deleted boolean DEFAULT false,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone,
+    deleted_at timestamp without time zone,
+    created_by uuid,
+    updated_by uuid,
+    deleted_by uuid,
+    age_limit character varying(10)
+);
+
+
+ALTER TABLE public.movies OWNER TO postgres;
+
+--
+-- Name: notifications; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.notifications (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid,
+    content text,
+    is_read boolean DEFAULT false,
+    is_active boolean DEFAULT true,
+    is_deleted boolean DEFAULT false,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone,
+    deleted_at timestamp without time zone,
+    created_by uuid,
+    updated_by uuid,
+    deleted_by uuid
+);
+
+
+ALTER TABLE public.notifications OWNER TO postgres;
+
+--
+-- Name: payments; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.payments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    booking_id uuid,
+    method character varying(50),
+    status character varying(20),
+    transaction_id text,
+    is_active boolean DEFAULT true,
+    is_deleted boolean DEFAULT false,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone,
+    deleted_at timestamp without time zone,
+    created_by uuid,
+    updated_by uuid,
+    deleted_by uuid
+);
+
+
+ALTER TABLE public.payments OWNER TO postgres;
+
+--
+-- Name: roles; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.roles (
+    id integer NOT NULL,
+    name character varying(50) NOT NULL
+);
+
+
+ALTER TABLE public.roles OWNER TO postgres;
+
+--
+-- Name: roles_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.roles_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.roles_id_seq OWNER TO postgres;
+
+--
+-- Name: roles_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.roles_id_seq OWNED BY public.roles.id;
+
+
+--
+-- Name: rooms; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.rooms (
+    id integer NOT NULL,
+    cinema_id integer,
+    name character varying(50) NOT NULL,
+    is_active boolean DEFAULT true,
+    is_deleted boolean DEFAULT false,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone,
+    deleted_at timestamp without time zone,
+    created_by uuid,
+    updated_by uuid,
+    deleted_by uuid,
+    capacity integer,
+    screen_type_id integer
+);
+
+
+ALTER TABLE public.rooms OWNER TO postgres;
+
+--
+-- Name: rooms_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.rooms_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.rooms_id_seq OWNER TO postgres;
+
+--
+-- Name: rooms_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.rooms_id_seq OWNED BY public.rooms.id;
+
+
+--
+-- Name: screen_types; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.screen_types (
+    id integer NOT NULL,
+    name character varying(50) NOT NULL,
+    description text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    is_active boolean DEFAULT true,
+    is_deleted boolean DEFAULT false,
+    updated_at timestamp without time zone,
+    deleted_at timestamp without time zone,
+    created_by uuid,
+    updated_by uuid,
+    deleted_by uuid
+);
+
+
+ALTER TABLE public.screen_types OWNER TO postgres;
+
+--
+-- Name: screen_types_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.screen_types_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.screen_types_id_seq OWNER TO postgres;
+
+--
+-- Name: screen_types_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.screen_types_id_seq OWNED BY public.screen_types.id;
+
+
+--
+-- Name: seat_types; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.seat_types (
+    id integer NOT NULL,
+    name character varying(50) NOT NULL,
+    extra_price numeric(10,2) DEFAULT 0,
+    description text,
+    is_active boolean DEFAULT true,
+    is_deleted boolean DEFAULT false,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone,
+    deleted_at timestamp without time zone,
+    created_by uuid,
+    updated_by uuid,
+    deleted_by uuid
+);
+
+
+ALTER TABLE public.seat_types OWNER TO postgres;
+
+--
+-- Name: seat_types_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.seat_types_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.seat_types_id_seq OWNER TO postgres;
+
+--
+-- Name: seat_types_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.seat_types_id_seq OWNED BY public.seat_types.id;
+
+
+--
+-- Name: seats; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.seats (
+    id integer NOT NULL,
+    room_id integer,
+    seat_number character varying(10),
+    is_active boolean DEFAULT true,
+    is_deleted boolean DEFAULT false,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone,
+    deleted_at timestamp without time zone,
+    created_by uuid,
+    updated_by uuid,
+    deleted_by uuid,
+    seat_type_id integer
+);
+
+
+ALTER TABLE public.seats OWNER TO postgres;
+
+--
+-- Name: seats_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.seats_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.seats_id_seq OWNER TO postgres;
+
+--
+-- Name: seats_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.seats_id_seq OWNED BY public.seats.id;
+
+
+--
+-- Name: showtimes; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.showtimes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    movie_id uuid,
+    room_id integer,
+    show_date date NOT NULL,
+    show_time time without time zone NOT NULL,
+    is_active boolean DEFAULT true,
+    is_deleted boolean DEFAULT false,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone,
+    deleted_at timestamp without time zone,
+    created_by uuid,
+    updated_by uuid,
+    deleted_by uuid,
+    base_price numeric(10,2) DEFAULT 0
+);
+
+
+ALTER TABLE public.showtimes OWNER TO postgres;
+
+--
+-- Name: ticket_prices; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.ticket_prices (
+    id integer NOT NULL,
+    day_of_week integer NOT NULL,
+    time_start time without time zone NOT NULL,
+    time_end time without time zone NOT NULL,
+    base_price numeric(10,2) DEFAULT 0 NOT NULL,
+    is_active boolean DEFAULT true,
+    is_deleted boolean DEFAULT false,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone,
+    deleted_at timestamp without time zone,
+    created_by uuid,
+    updated_by uuid,
+    deleted_by uuid
+);
+
+
+ALTER TABLE public.ticket_prices OWNER TO postgres;
+
+--
+-- Name: ticket_prices_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.ticket_prices_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.ticket_prices_id_seq OWNER TO postgres;
+
+--
+-- Name: ticket_prices_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.ticket_prices_id_seq OWNED BY public.ticket_prices.id;
+
+
+--
+-- Name: user_watch_history; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.user_watch_history (
+    id integer NOT NULL,
+    user_id uuid,
+    movie_id uuid,
+    watched_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    is_active boolean DEFAULT true,
+    is_deleted boolean DEFAULT false,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone,
+    deleted_at timestamp without time zone,
+    created_by uuid,
+    updated_by uuid,
+    deleted_by uuid
+);
+
+
+ALTER TABLE public.user_watch_history OWNER TO postgres;
+
+--
+-- Name: user_watch_history_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.user_watch_history_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.user_watch_history_id_seq OWNER TO postgres;
+
+--
+-- Name: user_watch_history_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.user_watch_history_id_seq OWNED BY public.user_watch_history.id;
+
+
+--
+-- Name: users; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.users (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    name character varying(100) NOT NULL,
+    email character varying(255) NOT NULL,
+    password character varying(255) NOT NULL,
+    phone character varying(20),
+    avatar text,
+    role_id integer DEFAULT 2,
+    is_active boolean DEFAULT true,
+    is_deleted boolean DEFAULT false,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone,
+    deleted_at timestamp without time zone,
+    created_by uuid,
+    updated_by uuid,
+    deleted_by uuid
+);
+
+
+ALTER TABLE public.users OWNER TO postgres;
+
+--
+-- Name: booking_seats id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.booking_seats ALTER COLUMN id SET DEFAULT nextval('public.booking_seats_id_seq'::regclass);
+
+
+--
+-- Name: bookmarks id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bookmarks ALTER COLUMN id SET DEFAULT nextval('public.bookmarks_id_seq'::regclass);
+
+
+--
+-- Name: cinemas id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.cinemas ALTER COLUMN id SET DEFAULT nextval('public.cinemas_id_seq'::regclass);
+
+
+--
+-- Name: movie_genres id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.movie_genres ALTER COLUMN id SET DEFAULT nextval('public.movie_genres_id_seq'::regclass);
+
+
+--
+-- Name: roles id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.roles ALTER COLUMN id SET DEFAULT nextval('public.roles_id_seq'::regclass);
+
+
+--
+-- Name: rooms id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.rooms ALTER COLUMN id SET DEFAULT nextval('public.rooms_id_seq'::regclass);
+
+
+--
+-- Name: screen_types id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.screen_types ALTER COLUMN id SET DEFAULT nextval('public.screen_types_id_seq'::regclass);
+
+
+--
+-- Name: seat_types id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.seat_types ALTER COLUMN id SET DEFAULT nextval('public.seat_types_id_seq'::regclass);
+
+
+--
+-- Name: seats id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.seats ALTER COLUMN id SET DEFAULT nextval('public.seats_id_seq'::regclass);
+
+
+--
+-- Name: ticket_prices id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.ticket_prices ALTER COLUMN id SET DEFAULT nextval('public.ticket_prices_id_seq'::regclass);
+
+
+--
+-- Name: user_watch_history id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.user_watch_history ALTER COLUMN id SET DEFAULT nextval('public.user_watch_history_id_seq'::regclass);
+
+
+--
+-- Data for Name: audit_logs; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.audit_logs (id, admin_id, action, target_table, target_id, note, created_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: booking_seats; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.booking_seats (id, booking_id, seat_id, price, is_active, is_deleted, created_at, updated_at, deleted_at, created_by, updated_by, deleted_by) FROM stdin;
+103	dbf78a38-3149-447a-b9cf-7ef7061bbe9f	6	75000.00	t	f	2026-02-27 14:12:20.472	\N	\N	beca10e6-e012-4c99-85f4-62d18a4e54c4	\N	\N
+104	dbf78a38-3149-447a-b9cf-7ef7061bbe9f	2	75000.00	t	f	2026-02-27 14:12:20.472	\N	\N	beca10e6-e012-4c99-85f4-62d18a4e54c4	\N	\N
+\.
+
+
+--
+-- Data for Name: bookings; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.bookings (id, user_id, showtime_id, status, total_price, is_active, is_deleted, created_at, updated_at, deleted_at, created_by, updated_by, deleted_by) FROM stdin;
+dbf78a38-3149-447a-b9cf-7ef7061bbe9f	beca10e6-e012-4c99-85f4-62d18a4e54c4	168dedb4-69f8-4b3b-a664-b8cebfc91ef0	success	150000.00	t	f	2026-02-27 14:12:20.472	2026-02-27 14:12:48.46	\N	beca10e6-e012-4c99-85f4-62d18a4e54c4	\N	\N
+\.
+
+
+--
+-- Data for Name: bookmarks; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.bookmarks (id, user_id, movie_id, is_active, is_deleted, created_at, updated_at, deleted_at, created_by, updated_by, deleted_by) FROM stdin;
+\.
+
+
+--
+-- Data for Name: cinemas; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.cinemas (id, name, location, is_active, is_deleted, created_at, updated_at, deleted_at, created_by, updated_by, deleted_by) FROM stdin;
+2	CGV Aeon Tân Phú	30 Bờ Bao Tân Thắng, Quận Tân Phú, TP.HCM	t	f	2025-07-28 09:10:57.649	\N	\N	\N	\N	\N
+3	CGV Aeon Tân Phú	30 Bờ Bao Tân Thắng, Quận Tân Phú, TP.HCM	t	f	2025-07-28 09:11:44.594	\N	\N	\N	\N	\N
+4	CGV Aeon Tân Phú	30 Bờ Bao Tân Thắng, Quận Tân Phú, TP.HCM	t	f	2025-07-28 09:11:49.435	\N	\N	\N	\N	\N
+5	CGV Aeon Tân Phú	30 Bờ Bao Tân Thắng, Quận Tân Phú, TP.HCM	t	f	2025-07-28 09:11:53.355	\N	\N	\N	\N	\N
+6	CGV Aeon Tân Phú	30 Bờ Bao Tân Thắng, Quận Tân Phú, TP.HCM	t	f	2025-07-28 09:11:54.637	\N	\N	\N	\N	\N
+7	CGV Aeon Tân Phú	30 Bờ Bao Tân Thắng, Quận Tân Phú, TP.HCM	t	f	2025-07-28 09:15:19.811	\N	\N	\N	\N	\N
+8	CGV Aeon Tân Phú	30 Bờ Bao Tân Thắng, Quận Tân Phú, TP.HCM	t	f	2025-07-28 09:15:22.009	\N	\N	\N	\N	\N
+9	CGV Aeon Tân Phú	30 Bờ Bao Tân Thắng, Quận Tân Phú, TP.HCM	t	f	2025-07-28 09:22:41.919	\N	\N	\N	\N	\N
+10	CGV Aeon Tân Phú	30 Bờ Bao Tân Thắng, Quận Tân Phú, TP.HCM	t	f	2025-07-28 09:29:19.525	\N	\N	4b833ef5-bdac-4bf5-b13b-aa8183ebc88b	\N	\N
+1	CGV Aeon Tân Phú (Updated)	Tầng 4, Aeon Mall Tân Phú	t	t	2025-07-28 08:58:18.13	2025-07-28 09:33:15.927	2025-07-28 09:34:02.198	\N	4b833ef5-bdac-4bf5-b13b-aa8183ebc88b	4b833ef5-bdac-4bf5-b13b-aa8183ebc88b
+\.
+
+
+--
+-- Data for Name: movie_genres; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.movie_genres (id, name, description, is_active, is_deleted, created_at, updated_at, deleted_at, created_by, updated_by, deleted_by) FROM stdin;
+1	Action	These films are characterized by high energy, physical stunts, and intense sequences. The plot typically involves a hero facing a series of challenges that require physical prowess and courage	t	f	2025-07-30 16:02:47.948921	\N	\N	\N	\N	\N
+2	Adventure	These films involve exciting stories, with new experiences or exotic locales. They often feature a journey or a quest as a central part of the narrative.	t	f	2025-07-30 16:02:47.948921	\N	\N	\N	\N	\N
+3	Comedy	The main emphasis in this genre is on humor. These films are designed to make the audience laugh through amusing situations, dialogue, and characters.	t	f	2025-07-30 16:02:47.948921	\N	\N	\N	\N	\N
+4	Crime	These films focus on the world of crime. They can be from the perspective of the criminals, the police, or a victim. The plot often revolves around a specific crime or a criminal's rise and fall	t	f	2025-07-30 16:02:47.948921	\N	\N	\N	\N	\N
+5	Drama	This genre is character-driven and focuses on realistic emotions and relationships. The story explores serious themes and conflicts, often with a significant emotional impact	t	f	2025-07-30 16:02:47.948921	\N	\N	\N	\N	\N
+6	Fantasy	 These films feature magical and supernatural elements that do not exist in the real world. They often involve myths, magic, and fantastical creatures.	t	f	2025-07-30 16:02:47.948921	\N	\N	\N	\N	\N
+\.
+
+
+--
+-- Data for Name: movie_movie_genres; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.movie_movie_genres (movie_id, genre_id) FROM stdin;
+7dd20ab7-a19d-4ea5-a21e-cd625787becf	1
+7dd20ab7-a19d-4ea5-a21e-cd625787becf	2
+7dd20ab7-a19d-4ea5-a21e-cd625787becf	3
+\.
+
+
+--
+-- Data for Name: movies; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.movies (id, title, duration, description, thumbnail, release_date, is_showing, is_active, is_deleted, created_at, updated_at, deleted_at, created_by, updated_by, deleted_by, age_limit) FROM stdin;
+71b5847b-0c85-4f9b-9d19-e82706e79583	Interstellar	169	A journey through space and time.	https://image.url	2025-07-15	t	t	f	2025-07-27 14:29:30.878	\N	\N	\N	\N	\N	\N
+039e09c4-ef70-4796-9098-eace4f1725a2	Sample	150	A journey through space and time.	https://image.url	2025-07-15	t	t	f	2025-07-26 18:53:08.016	2025-07-27 14:30:50.149	2025-07-27 14:29:14.105	\N	4b833ef5-bdac-4bf5-b13b-aa8183ebc88b	\N	\N
+660d5472-eb03-4c4b-ab53-1578ace6a5fb	Interstellar	169	A journey through space and time.	https://image.url	2025-07-15	t	t	f	2025-07-28 08:58:36.103	\N	\N	\N	\N	\N	\N
+7dd20ab7-a19d-4ea5-a21e-cd625787becf	Avengers: Endgame	181	Superhero movie by Marvel	https://example.com/image.jpg	2025-07-15	t	t	f	2025-07-30 09:03:50.219	\N	\N	4b833ef5-bdac-4bf5-b13b-aa8183ebc88b	\N	\N	\N
+\.
+
+
+--
+-- Data for Name: notifications; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.notifications (id, user_id, content, is_read, is_active, is_deleted, created_at, updated_at, deleted_at, created_by, updated_by, deleted_by) FROM stdin;
+\.
+
+
+--
+-- Data for Name: payments; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.payments (id, booking_id, method, status, transaction_id, is_active, is_deleted, created_at, updated_at, deleted_at, created_by, updated_by, deleted_by) FROM stdin;
+3e1714b0-dd31-4e02-9d9e-6372bd603e69	dbf78a38-3149-447a-b9cf-7ef7061bbe9f	card	success	pi_3T5Rmg3AeVTHBVD50sNCuuKs	t	f	2026-02-27 14:12:48.467	\N	\N	beca10e6-e012-4c99-85f4-62d18a4e54c4	\N	\N
+\.
+
+
+--
+-- Data for Name: roles; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.roles (id, name) FROM stdin;
+1	admin
+2	user
+\.
+
+
+--
+-- Data for Name: rooms; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.rooms (id, cinema_id, name, is_active, is_deleted, created_at, updated_at, deleted_at, created_by, updated_by, deleted_by, capacity, screen_type_id) FROM stdin;
+2	1	Phòng VIP 3	t	f	2025-07-29 07:10:24.029	2025-07-29 07:13:34.266	2025-07-29 07:17:47.168	4b833ef5-bdac-4bf5-b13b-aa8183ebc88b	4b833ef5-bdac-4bf5-b13b-aa8183ebc88b	4b833ef5-bdac-4bf5-b13b-aa8183ebc88b	100	1
+\.
+
+
+--
+-- Data for Name: screen_types; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.screen_types (id, name, description, created_at, is_active, is_deleted, updated_at, deleted_at, created_by, updated_by, deleted_by) FROM stdin;
+2	IMAX	Màn hình lớn với âm thanh vòm sống động	2025-07-29 07:32:25.111	t	f	\N	\N	4b833ef5-bdac-4bf5-b13b-aa8183ebc88b	\N	\N
+1	2D	Màn hình IMAX chuẩn quốc tế	2025-07-29 14:10:09.71361	t	t	2025-07-29 07:33:17.21	2025-07-29 07:35:34.943	\N	4b833ef5-bdac-4bf5-b13b-aa8183ebc88b	4b833ef5-bdac-4bf5-b13b-aa8183ebc88b
+\.
+
+
+--
+-- Data for Name: seat_types; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.seat_types (id, name, extra_price, description, is_active, is_deleted, created_at, updated_at, deleted_at, created_by, updated_by, deleted_by) FROM stdin;
+1	Standard	0.00	\N	t	f	2025-07-31 17:03:26.041688	\N	\N	\N	\N	\N
+2	VIP	20000.00	\N	t	f	2025-07-31 17:03:26.041688	\N	\N	\N	\N	\N
+\.
+
+
+--
+-- Data for Name: seats; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.seats (id, room_id, seat_number, is_active, is_deleted, created_at, updated_at, deleted_at, created_by, updated_by, deleted_by, seat_type_id) FROM stdin;
+3	2	A2	t	f	2025-07-31 17:04:00.948765	\N	\N	\N	\N	\N	2
+6	2	A3	t	f	2025-07-31 17:13:40.512347	\N	\N	\N	\N	\N	2
+2	2	A1	t	f	2025-07-31 17:03:26.041688	\N	\N	\N	\N	\N	2
+\.
+
+
+--
+-- Data for Name: showtimes; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.showtimes (id, movie_id, room_id, show_date, show_time, is_active, is_deleted, created_at, updated_at, deleted_at, created_by, updated_by, deleted_by, base_price) FROM stdin;
+e8fd16b3-68a0-44b3-84f2-ee2c243f9590	7dd20ab7-a19d-4ea5-a21e-cd625787becf	2	2025-08-01	18:30:00	t	f	2025-07-31 07:04:04.55	\N	\N	4b833ef5-bdac-4bf5-b13b-aa8183ebc88b	\N	\N	0.00
+638babbf-ea5b-4862-97d3-ad7864405391	7dd20ab7-a19d-4ea5-a21e-cd625787becf	2	2025-08-01	18:30:00	t	f	2025-07-31 09:58:42.322	\N	\N	4b833ef5-bdac-4bf5-b13b-aa8183ebc88b	\N	\N	70000.00
+43889634-ba2d-4052-9c13-094c30549126	7dd20ab7-a19d-4ea5-a21e-cd625787becf	2	2025-08-01	18:30:00	t	f	2025-07-31 09:58:45.549	\N	\N	4b833ef5-bdac-4bf5-b13b-aa8183ebc88b	\N	\N	70000.00
+168dedb4-69f8-4b3b-a664-b8cebfc91ef0	7dd20ab7-a19d-4ea5-a21e-cd625787becf	2	2025-08-02	08:30:00	t	f	2025-07-31 09:58:46.54	\N	\N	4b833ef5-bdac-4bf5-b13b-aa8183ebc88b	\N	\N	50000.00
+\.
+
+
+--
+-- Data for Name: ticket_prices; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.ticket_prices (id, day_of_week, time_start, time_end, base_price, is_active, is_deleted, created_at, updated_at, deleted_at, created_by, updated_by, deleted_by) FROM stdin;
+1	1	08:00:00	12:00:00	0.00	t	f	2025-08-01 14:26:16.062994	\N	\N	\N	\N	\N
+2	2	08:00:00	12:00:00	0.00	t	f	2025-08-01 14:26:16.062994	\N	\N	\N	\N	\N
+3	3	08:00:00	12:00:00	0.00	t	f	2025-08-01 14:26:16.062994	\N	\N	\N	\N	\N
+4	4	08:00:00	12:00:00	0.00	t	f	2025-08-01 14:26:16.062994	\N	\N	\N	\N	\N
+5	5	08:00:00	12:00:00	0.00	t	f	2025-08-01 14:26:16.062994	\N	\N	\N	\N	\N
+6	1	12:00:01	18:00:00	5000.00	t	f	2025-08-01 14:26:16.062994	\N	\N	\N	\N	\N
+7	2	12:00:01	18:00:00	5000.00	t	f	2025-08-01 14:26:16.062994	\N	\N	\N	\N	\N
+8	3	12:00:01	18:00:00	5000.00	t	f	2025-08-01 14:26:16.062994	\N	\N	\N	\N	\N
+9	4	12:00:01	18:00:00	5000.00	t	f	2025-08-01 14:26:16.062994	\N	\N	\N	\N	\N
+10	5	12:00:01	18:00:00	5000.00	t	f	2025-08-01 14:26:16.062994	\N	\N	\N	\N	\N
+11	1	18:00:01	23:59:59	10000.00	t	f	2025-08-01 14:26:16.062994	\N	\N	\N	\N	\N
+12	2	18:00:01	23:59:59	10000.00	t	f	2025-08-01 14:26:16.062994	\N	\N	\N	\N	\N
+13	3	18:00:01	23:59:59	10000.00	t	f	2025-08-01 14:26:16.062994	\N	\N	\N	\N	\N
+14	4	18:00:01	23:59:59	10000.00	t	f	2025-08-01 14:26:16.062994	\N	\N	\N	\N	\N
+15	5	18:00:01	23:59:59	10000.00	t	f	2025-08-01 14:26:16.062994	\N	\N	\N	\N	\N
+16	6	08:00:00	12:00:00	5000.00	t	f	2025-08-01 14:26:16.113641	\N	\N	\N	\N	\N
+17	6	12:00:01	18:00:00	10000.00	t	f	2025-08-01 14:26:16.113641	\N	\N	\N	\N	\N
+18	6	18:00:01	23:59:59	15000.00	t	f	2025-08-01 14:26:16.113641	\N	\N	\N	\N	\N
+19	0	08:00:00	12:00:00	5000.00	t	f	2025-08-01 14:26:16.113641	\N	\N	\N	\N	\N
+20	0	12:00:01	18:00:00	10000.00	t	f	2025-08-01 14:26:16.113641	\N	\N	\N	\N	\N
+21	0	18:00:01	23:59:59	15000.00	t	f	2025-08-01 14:26:16.113641	\N	\N	\N	\N	\N
+\.
+
+
+--
+-- Data for Name: user_watch_history; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.user_watch_history (id, user_id, movie_id, watched_at, is_active, is_deleted, created_at, updated_at, deleted_at, created_by, updated_by, deleted_by) FROM stdin;
+\.
+
+
+--
+-- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.users (id, name, email, password, phone, avatar, role_id, is_active, is_deleted, created_at, updated_at, deleted_at, created_by, updated_by, deleted_by) FROM stdin;
+30d2c2b2-7754-40b9-a2a0-712117239ae5	minh hieu	minhhieu2gmail.com	$2b$10$kQRJYMEiX1YBiXmvGIALweq5xmV7UkI/.VdVc0rE2V7AE2prZ1wte	0964504537	\N	2	t	f	2025-07-22 07:19:51.455	\N	\N	\N	\N	\N
+69527766-43d1-455c-80e7-d65b4e88bd0e	minh hieu	minhhieu3@gmail.com	$2b$10$z93HI55HiRL.4s77TiixUeVRnwlJfa2Kq8I31JZ4YvL4e4oqkdrfC	0964504537	\N	2	t	f	2025-07-22 07:32:15.189	\N	\N	\N	\N	\N
+8f066cf7-8293-4f94-bc93-ecb07d17cd47	minh hieu	minhhieu1@gmail.com	$2b$10$XabLVteTKODbSszTPLvMBeT.vQZAh2S4rXJE3qan/.gpilK1AHj.K	0964504537	\N	1	t	f	2025-07-22 07:22:06.621	\N	\N	\N	\N	\N
+4b833ef5-bdac-4bf5-b13b-aa8183ebc88b	admin	admin@gmail.com	$2b$10$JdZl5JuA.UeRQ5WKpQkHU.qiBK2fnmXq301yrVWi0AOw4mC6upVHe	0964504537	\N	1	t	f	2025-07-26 07:55:11.301	\N	\N	\N	\N	\N
+85904815-bed6-470e-8959-ba61270bd23a	admin1	admin1@gmail.com	$2b$10$vNJOE/nhF0AXQz03.GgIn.qdn3PWhERERv/lejkWRRqaFp4VdEdki	0964504537	\N	2	t	f	2025-07-26 18:52:47.933	\N	\N	\N	\N	\N
+beca10e6-e012-4c99-85f4-62d18a4e54c4	user	user@gmail.com	$2b$10$OI49u3S9SuE1Ao3DZOoqieTwkg9dK4TcoilXaW29jCN8IPgwZfiKu	0964504537	\N	2	t	f	2025-08-01 07:59:23.45	\N	\N	\N	\N	\N
+114962df-8770-457d-be6b-2830370ebaa9	user1	user1@gmail.com	$2b$10$pE0C1B485ZqHwEAXUj0lu.YAFvgQWgZwNUhsv4N5ODvt7ZOirRz6y	0964504537	\N	2	t	f	2025-08-07 06:49:22.393	\N	\N	\N	\N	\N
+\.
+
+
+--
+-- Name: booking_seats_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.booking_seats_id_seq', 104, true);
+
+
+--
+-- Name: bookmarks_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.bookmarks_id_seq', 1, false);
+
+
+--
+-- Name: cinemas_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.cinemas_id_seq', 10, true);
+
+
+--
+-- Name: movie_genres_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.movie_genres_id_seq', 6, true);
+
+
+--
+-- Name: roles_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.roles_id_seq', 2, true);
+
+
+--
+-- Name: rooms_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.rooms_id_seq', 2, true);
+
+
+--
+-- Name: screen_types_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.screen_types_id_seq', 2, true);
+
+
+--
+-- Name: seat_types_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.seat_types_id_seq', 2, true);
+
+
+--
+-- Name: seats_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.seats_id_seq', 6, true);
+
+
+--
+-- Name: ticket_prices_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.ticket_prices_id_seq', 21, true);
+
+
+--
+-- Name: user_watch_history_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.user_watch_history_id_seq', 1, false);
+
+
+--
+-- Name: audit_logs audit_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.audit_logs
+    ADD CONSTRAINT audit_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: booking_seats booking_seats_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.booking_seats
+    ADD CONSTRAINT booking_seats_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: bookings bookings_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bookings
+    ADD CONSTRAINT bookings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: bookmarks bookmarks_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bookmarks
+    ADD CONSTRAINT bookmarks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: cinemas cinemas_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.cinemas
+    ADD CONSTRAINT cinemas_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: movie_genres movie_genres_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.movie_genres
+    ADD CONSTRAINT movie_genres_name_key UNIQUE (name);
+
+
+--
+-- Name: movie_genres movie_genres_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.movie_genres
+    ADD CONSTRAINT movie_genres_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: movie_movie_genres movie_movie_genres_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.movie_movie_genres
+    ADD CONSTRAINT movie_movie_genres_pkey PRIMARY KEY (movie_id, genre_id);
+
+
+--
+-- Name: movies movies_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.movies
+    ADD CONSTRAINT movies_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: notifications notifications_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.notifications
+    ADD CONSTRAINT notifications_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: payments payments_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments
+    ADD CONSTRAINT payments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: roles roles_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.roles
+    ADD CONSTRAINT roles_name_key UNIQUE (name);
+
+
+--
+-- Name: roles roles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.roles
+    ADD CONSTRAINT roles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: rooms rooms_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.rooms
+    ADD CONSTRAINT rooms_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: screen_types screen_types_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.screen_types
+    ADD CONSTRAINT screen_types_name_key UNIQUE (name);
+
+
+--
+-- Name: screen_types screen_types_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.screen_types
+    ADD CONSTRAINT screen_types_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: seat_types seat_types_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.seat_types
+    ADD CONSTRAINT seat_types_name_key UNIQUE (name);
+
+
+--
+-- Name: seat_types seat_types_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.seat_types
+    ADD CONSTRAINT seat_types_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: seats seats_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.seats
+    ADD CONSTRAINT seats_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: showtimes showtimes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.showtimes
+    ADD CONSTRAINT showtimes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ticket_prices ticket_prices_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.ticket_prices
+    ADD CONSTRAINT ticket_prices_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: seats unique_seat_per_room; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.seats
+    ADD CONSTRAINT unique_seat_per_room UNIQUE (room_id, seat_number);
+
+
+--
+-- Name: user_watch_history user_watch_history_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.user_watch_history
+    ADD CONSTRAINT user_watch_history_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: users users_email_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_email_key UNIQUE (email);
+
+
+--
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: audit_logs audit_logs_admin_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.audit_logs
+    ADD CONSTRAINT audit_logs_admin_id_fkey FOREIGN KEY (admin_id) REFERENCES public.users(id);
+
+
+--
+-- Name: booking_seats booking_seats_booking_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.booking_seats
+    ADD CONSTRAINT booking_seats_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES public.bookings(id);
+
+
+--
+-- Name: booking_seats booking_seats_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.booking_seats
+    ADD CONSTRAINT booking_seats_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: booking_seats booking_seats_deleted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.booking_seats
+    ADD CONSTRAINT booking_seats_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES public.users(id);
+
+
+--
+-- Name: booking_seats booking_seats_seat_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.booking_seats
+    ADD CONSTRAINT booking_seats_seat_id_fkey FOREIGN KEY (seat_id) REFERENCES public.seats(id);
+
+
+--
+-- Name: booking_seats booking_seats_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.booking_seats
+    ADD CONSTRAINT booking_seats_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id);
+
+
+--
+-- Name: bookings bookings_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bookings
+    ADD CONSTRAINT bookings_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: bookings bookings_deleted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bookings
+    ADD CONSTRAINT bookings_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES public.users(id);
+
+
+--
+-- Name: bookings bookings_showtime_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bookings
+    ADD CONSTRAINT bookings_showtime_id_fkey FOREIGN KEY (showtime_id) REFERENCES public.showtimes(id);
+
+
+--
+-- Name: bookings bookings_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bookings
+    ADD CONSTRAINT bookings_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id);
+
+
+--
+-- Name: bookings bookings_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bookings
+    ADD CONSTRAINT bookings_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: bookmarks bookmarks_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bookmarks
+    ADD CONSTRAINT bookmarks_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: bookmarks bookmarks_deleted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bookmarks
+    ADD CONSTRAINT bookmarks_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES public.users(id);
+
+
+--
+-- Name: bookmarks bookmarks_movie_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bookmarks
+    ADD CONSTRAINT bookmarks_movie_id_fkey FOREIGN KEY (movie_id) REFERENCES public.movies(id);
+
+
+--
+-- Name: bookmarks bookmarks_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bookmarks
+    ADD CONSTRAINT bookmarks_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id);
+
+
+--
+-- Name: bookmarks bookmarks_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bookmarks
+    ADD CONSTRAINT bookmarks_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: cinemas cinemas_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.cinemas
+    ADD CONSTRAINT cinemas_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: cinemas cinemas_deleted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.cinemas
+    ADD CONSTRAINT cinemas_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES public.users(id);
+
+
+--
+-- Name: cinemas cinemas_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.cinemas
+    ADD CONSTRAINT cinemas_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id);
+
+
+--
+-- Name: movie_genres movie_genres_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.movie_genres
+    ADD CONSTRAINT movie_genres_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: movie_genres movie_genres_deleted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.movie_genres
+    ADD CONSTRAINT movie_genres_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES public.users(id);
+
+
+--
+-- Name: movie_genres movie_genres_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.movie_genres
+    ADD CONSTRAINT movie_genres_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id);
+
+
+--
+-- Name: movie_movie_genres movie_movie_genres_genre_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.movie_movie_genres
+    ADD CONSTRAINT movie_movie_genres_genre_id_fkey FOREIGN KEY (genre_id) REFERENCES public.movie_genres(id) ON DELETE CASCADE;
+
+
+--
+-- Name: movie_movie_genres movie_movie_genres_movie_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.movie_movie_genres
+    ADD CONSTRAINT movie_movie_genres_movie_id_fkey FOREIGN KEY (movie_id) REFERENCES public.movies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: movies movies_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.movies
+    ADD CONSTRAINT movies_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: movies movies_deleted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.movies
+    ADD CONSTRAINT movies_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES public.users(id);
+
+
+--
+-- Name: movies movies_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.movies
+    ADD CONSTRAINT movies_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id);
+
+
+--
+-- Name: notifications notifications_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.notifications
+    ADD CONSTRAINT notifications_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: notifications notifications_deleted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.notifications
+    ADD CONSTRAINT notifications_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES public.users(id);
+
+
+--
+-- Name: notifications notifications_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.notifications
+    ADD CONSTRAINT notifications_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id);
+
+
+--
+-- Name: notifications notifications_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.notifications
+    ADD CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: payments payments_booking_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments
+    ADD CONSTRAINT payments_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES public.bookings(id);
+
+
+--
+-- Name: payments payments_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments
+    ADD CONSTRAINT payments_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: payments payments_deleted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments
+    ADD CONSTRAINT payments_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES public.users(id);
+
+
+--
+-- Name: payments payments_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments
+    ADD CONSTRAINT payments_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id);
+
+
+--
+-- Name: rooms rooms_cinema_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.rooms
+    ADD CONSTRAINT rooms_cinema_id_fkey FOREIGN KEY (cinema_id) REFERENCES public.cinemas(id);
+
+
+--
+-- Name: rooms rooms_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.rooms
+    ADD CONSTRAINT rooms_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: rooms rooms_deleted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.rooms
+    ADD CONSTRAINT rooms_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES public.users(id);
+
+
+--
+-- Name: rooms rooms_screen_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.rooms
+    ADD CONSTRAINT rooms_screen_type_id_fkey FOREIGN KEY (screen_type_id) REFERENCES public.screen_types(id);
+
+
+--
+-- Name: rooms rooms_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.rooms
+    ADD CONSTRAINT rooms_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id);
+
+
+--
+-- Name: screen_types screen_types_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.screen_types
+    ADD CONSTRAINT screen_types_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: screen_types screen_types_deleted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.screen_types
+    ADD CONSTRAINT screen_types_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES public.users(id);
+
+
+--
+-- Name: screen_types screen_types_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.screen_types
+    ADD CONSTRAINT screen_types_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id);
+
+
+--
+-- Name: seat_types seat_types_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.seat_types
+    ADD CONSTRAINT seat_types_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: seat_types seat_types_deleted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.seat_types
+    ADD CONSTRAINT seat_types_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES public.users(id);
+
+
+--
+-- Name: seat_types seat_types_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.seat_types
+    ADD CONSTRAINT seat_types_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id);
+
+
+--
+-- Name: seats seats_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.seats
+    ADD CONSTRAINT seats_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: seats seats_deleted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.seats
+    ADD CONSTRAINT seats_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES public.users(id);
+
+
+--
+-- Name: seats seats_room_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.seats
+    ADD CONSTRAINT seats_room_id_fkey FOREIGN KEY (room_id) REFERENCES public.rooms(id);
+
+
+--
+-- Name: seats seats_seat_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.seats
+    ADD CONSTRAINT seats_seat_type_id_fkey FOREIGN KEY (seat_type_id) REFERENCES public.seat_types(id);
+
+
+--
+-- Name: seats seats_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.seats
+    ADD CONSTRAINT seats_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id);
+
+
+--
+-- Name: showtimes showtimes_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.showtimes
+    ADD CONSTRAINT showtimes_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: showtimes showtimes_deleted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.showtimes
+    ADD CONSTRAINT showtimes_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES public.users(id);
+
+
+--
+-- Name: showtimes showtimes_movie_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.showtimes
+    ADD CONSTRAINT showtimes_movie_id_fkey FOREIGN KEY (movie_id) REFERENCES public.movies(id);
+
+
+--
+-- Name: showtimes showtimes_room_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.showtimes
+    ADD CONSTRAINT showtimes_room_id_fkey FOREIGN KEY (room_id) REFERENCES public.rooms(id);
+
+
+--
+-- Name: showtimes showtimes_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.showtimes
+    ADD CONSTRAINT showtimes_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id);
+
+
+--
+-- Name: ticket_prices ticket_prices_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.ticket_prices
+    ADD CONSTRAINT ticket_prices_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: ticket_prices ticket_prices_deleted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.ticket_prices
+    ADD CONSTRAINT ticket_prices_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES public.users(id);
+
+
+--
+-- Name: ticket_prices ticket_prices_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.ticket_prices
+    ADD CONSTRAINT ticket_prices_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id);
+
+
+--
+-- Name: user_watch_history user_watch_history_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.user_watch_history
+    ADD CONSTRAINT user_watch_history_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: user_watch_history user_watch_history_deleted_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.user_watch_history
+    ADD CONSTRAINT user_watch_history_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES public.users(id);
+
+
+--
+-- Name: user_watch_history user_watch_history_movie_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.user_watch_history
+    ADD CONSTRAINT user_watch_history_movie_id_fkey FOREIGN KEY (movie_id) REFERENCES public.movies(id);
+
+
+--
+-- Name: user_watch_history user_watch_history_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.user_watch_history
+    ADD CONSTRAINT user_watch_history_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id);
+
+
+--
+-- Name: user_watch_history user_watch_history_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.user_watch_history
+    ADD CONSTRAINT user_watch_history_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: users users_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id);
+
+
+--
+-- PostgreSQL database dump complete
+--
+

@@ -19,13 +19,27 @@
   import * as redisStore from 'cache-manager-ioredis';
   import { RedisModule } from './common/redis/redis.module';
   import { PaymentsModule } from './modules/payments/payments.module';
+import stripeConfig from './config/stripe.config';
+import { abort, env } from 'process';
+import { envValidationSchema } from './config/env.validation';
+import { allow } from 'joi';
+import databaseConfig from './config/database.config';
+import jwtConfig from './config/jwt.config';
 
 
 
 
   @Module({
     imports: [
-      ConfigModule.forRoot(),
+      ConfigModule.forRoot({
+        isGlobal: true,
+        load: [stripeConfig, databaseConfig, jwtConfig],
+        validationSchema: envValidationSchema,
+        validationOptions:{
+          allowUnknown: true,
+          abortEarly: true,
+        },
+      }),
       RedisModule,
       UserModule,
       AuthModule,

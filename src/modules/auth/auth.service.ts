@@ -66,7 +66,7 @@ export class AuthService {
     const { refreshToken } = body;
 
     try {
-      const decoded = this.tokenService.verifyRefreshToken(refreshToken);
+      const decoded = await this.tokenService.verifyRefreshToken(refreshToken);
 
       const user = await this.prisma.users.findUnique({
         where: { id: decoded.sub },

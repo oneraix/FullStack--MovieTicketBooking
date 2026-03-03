@@ -1,61 +1,204 @@
 // bookings.service.ts
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Search } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
-import { UpdateBookingDto } from './dto/update-booking.dto';
-import { HOLD_TTL_SECONDS } from 'src/common/constant/app.constant';
-import { IOREDIS_CLIENT } from 'src/common/redis/redis.provider';
-import Redis from 'ioredis';
-
+import { BookingHoldService } from './booking-hold.service';
+import { BookingStatus, Prisma } from 'generated/prisma';
+import { BookingListQueryDto } from './dto/booking-list.query.dto';
 
 @Injectable()
 export class BookingsService {
 
   //script Lua for redis
-  private readonly SAFE_RELEASE_LUA_SCRIPT =`
-  if redis.call("get",KEYS[1]) == ARGV[1] then
-    return redis.call("del",KEYS[1])
-    else
-    return 0
-  end
-  `;
+  // private readonly SAFE_RELEASE_LUA_SCRIPT =`
+  // if redis.call("get",KEYS[1]) == ARGV[1] then
+  //   return redis.call("del",KEYS[1])
+  //   else
+  //   return 0
+  // end
+  // `;
+  constructor(
+    private prisma: PrismaService,
+    private readonly bookingHoldService: BookingHoldService
+  ) { }
 
-  constructor(private prisma: PrismaService,
-     @Inject(IOREDIS_CLIENT) private readonly redisClient: Redis
-    ) {}
-  
-  private async cacheSetJSON(key: string, value: unknown, ttlSeconds: number) {
-    await this.redisClient.set(key, JSON.stringify(value), 'EX', ttlSeconds);
+  private normalizePagination(page?: number, limit?: number) {
+    const safePage = Number.isFinite(page) && page! > 0 ? Number(page) : 1;
+    const safeLimit = Number.isFinite(limit) && limit! > 0 ? Math.min(Number(limit), 100) : 10;
+    return {
+      page: safePage,
+      limit: safeLimit,
+      skip: (safePage - 1) * safeLimit
+    };
   }
-  private async cacheGetJSON<T = unknown>(key: string): Promise<T | undefined> {
-    const raw = await this.redisClient.get(key);
-    return raw ? (JSON.parse(raw) as T) : undefined;
+
+private buildBookingWhere(
+  query: BookingListQueryDto,
+  userId?: string,
+): Prisma.bookingsWhereInput {
+  const where: Prisma.bookingsWhereInput = {
+    is_deleted: false,
+  };
+
+  if (userId) {
+    where.user_id = userId;
   }
 
+  if (query.status) {
+    where.status = query.status;
+  }
 
-  async holdSeats(showtimeId: string, seatIds: number[], userId: string) {
-    const ttl = Number(HOLD_TTL_SECONDS) || 300;
+  if (query.payment_status) {
+    where.payments = {
+      some: {
+        status: query.payment_status,
+        is_deleted: false,
+      },
+    };
+  }
 
-    // Dùng pipeline để giữ nhiều ghế 1 lúc
-    const pipe = this.redisClient.multi();
-    for (const seatId of seatIds) {
-      const key = `hold:${showtimeId}:${seatId}`;
-      //pipe.set('SET', key, userId, 'NX', 'EX', ttl); // SET NX EX <ttl>
-      (pipe as any).call('SET', key, userId, 'NX', 'EX', String(ttl));
-    }
-    const results = await pipe.exec();
+  const showtimeWhere: Prisma.showtimesWhereInput = {};
 
-    // Nếu có ghế không lock được → rollback các key đã set và báo lỗi
-    const failed = results?.some((r) => r == null || r[1] !== 'OK');
-    if (failed) {
-      const cleanup = this.redisClient.multi();
-      for (const seatId of seatIds) {
-        cleanup.del(`hold:${showtimeId}:${seatId}`);
+  if (query.showtime_id) {
+    showtimeWhere.id = query.showtime_id;
+  }
+
+  if (query.movie_id) {
+    showtimeWhere.movie_id = query.movie_id;
+  }
+
+  if (query.search?.trim()) {
+    showtimeWhere.movies = {
+      is: {
+        title: {
+          contains: query.search.trim(),
+          mode: 'insensitive',
+        },
+      },
+    };
+  }
+
+  if (query.from_date || query.to_date) {
+    const showDateFilter: Prisma.DateTimeFilter = {};
+
+    if (query.from_date) {
+      const from = new Date(`${query.from_date}T00:00:00.000Z`);
+      if (Number.isNaN(from.getTime())) {
+        throw new BadRequestException('from_date không hợp lệ');
       }
-      await cleanup.exec();
-      throw new BadRequestException('Một hoặc nhiều ghế đang được giữ bởi người khác');
+      showDateFilter.gte = from;
+    }
+
+    if (query.to_date) {
+      const to = new Date(`${query.to_date}T23:59:59.999Z`);
+      if (Number.isNaN(to.getTime())) {
+        throw new BadRequestException('to_date không hợp lệ');
+      }
+      showDateFilter.lte = to;
+    }
+
+    showtimeWhere.show_date = showDateFilter;
+  }
+
+  if (Object.keys(showtimeWhere).length > 0) {
+    where.showtimes = {
+      is: showtimeWhere,
+    };
+  }
+
+  return where;
+}
+
+  private bookingListSelect():Prisma.bookingsSelect{
+    return{
+      id: true,
+      user_id:true,
+      status: true,
+      total_price: true,
+      created_at: true,
+      updated_at: true,
+
+      users_bookings_user_idTousers:{
+        select:{
+          id: true,
+          name: true,
+          email: true,
+          phone: true
+        },
+      },
+      showtimes:{
+        select:{
+          id:true,
+          show_date: true,
+          show_time: true,
+          base_price: true,
+          movies:{
+            select:{
+              id:true,
+              title:true,
+              thumbnail:true,
+              duration:true,
+              age_limit:true,
+            },
+          },
+          rooms:{
+            select:{
+              id:true,
+              name:true,
+              cinemas:{
+                select:{
+                  id:true,
+                  name:true,
+                  location:true
+                },
+              },
+            },
+          },
+        },
+      },
+      booking_seats:{
+        where:{
+          is_deleted:false,
+        },
+        select:{
+          id: true,
+          seat_id: true,
+          price: true,
+          seats:{
+            select:{
+              id:true,
+              seat_number:true,
+              seat_types:{
+                select:{
+                  id:true,
+                  name:true,
+                  extra_price:true
+                },
+              },
+            },
+          },
+        },
+      },
+      payments:{
+        where:{
+          is_deleted:false,
+        },
+        select:{
+          id: true,
+          method: true,
+          status: true,
+          transaction_id: true,
+          created_at: true,
+        },
+        orderBy:{
+          created_at:'desc'
+        }
+      }
     }
   }
+
+
+
 
   private async calculateTotalPriceAndSeatData(
     showtimeId: string,
@@ -75,11 +218,16 @@ export class BookingsService {
         show_date: true,
         show_time: true,
         base_price: true,
+        room_id: true, //dùng để validation tránh việc tạo booking cho ghế không tồn tại trong phòng
       },
     });
 
     if (!showtime) {
       throw new NotFoundException('Showtime không tồn tại');
+    }
+
+    if (!showtime.room_id) {
+      throw new BadRequestException('Phòng chiếu không tồn tại');
     }
 
     const dayOfWeek = new Date(showtime.show_date).getDay();
@@ -98,7 +246,7 @@ export class BookingsService {
     const basePrice = showtime.base_price?.toNumber() || 0;
 
     const seats = await this.prisma.seats.findMany({
-      where: { id: { in: seatIds }, is_deleted: false },
+      where: { id: { in: seatIds }, is_deleted: false, room_id: showtime.room_id },
       include: { seat_types: true },
     });
 
@@ -121,112 +269,263 @@ export class BookingsService {
     return { total_price, bookingSeatData };
   }
 
-   async create(dto: CreateBookingDto, userId: string) {
+  //create tạo booking(pending), booking_seats, giữ ghế bằng redis seatHold -> Paymentservice tạo session checkout -> webhook
+  async create(dto: CreateBookingDto, userId: string) {
     const { showtime_id, seat_ids } = dto;
+
+    //bắt lỗi trùng ids ghế (1)
+    const uniq = Array.from(new Set(seat_ids));
+    if (uniq.length !== seat_ids.length) {
+      throw new BadRequestException('Ghế bị trùng');
+    }
+
+    //tính tống tien (2)
     const { total_price, bookingSeatData } =
       await this.calculateTotalPriceAndSeatData(showtime_id, seat_ids, userId);
 
-    const bookedSeats = await this.prisma.booking_seats.findMany({
-      where: {
-        seat_id: { in: seat_ids },
-        bookings: {
-          showtime_id,
-          OR: [{ status: 'success' }, { status: 'pending', user_id: userId }],
+
+    // giữ ghế trước khi truy vấn database (3)
+    await this.bookingHoldService.holdSeats(showtime_id, seat_ids, userId);
+    try {
+      const bookedSeats = await this.prisma.booking_seats.findMany({
+        where: {
+          seat_id: { in: seat_ids },
+          bookings: {
+            showtime_id,
+            OR: [{ status: BookingStatus.success }, { status: BookingStatus.pending, user_id: userId }],
+          },
         },
-      },
-    });
-    if (bookedSeats.length > 0) {
-      const ids = bookedSeats.map((bs) => bs.seat_id).join(',');
-      throw new BadRequestException(`Seat ${ids} is already booked`);
+      });
+      if (bookedSeats.length > 0) {
+        const ids = bookedSeats.map((bs) => bs.seat_id).join(',');
+        throw new BadRequestException(`Seat ${ids} is already booked`);
+      }
+
+      //tạo booking (4)
+      const createdBooking = await this.prisma.bookings.create({
+        data: {
+          showtime_id,
+          user_id: userId,
+          total_price,
+          created_by: userId,
+          booking_seats: { create: bookingSeatData },
+        },
+        include: { booking_seats: true },
+      });
+
+      await this.bookingHoldService.cacheBookingHold(createdBooking.id, {
+        showtimeId: showtime_id,
+        seatIds: seat_ids,
+        userId,
+      });
+      return createdBooking;
+    } catch (e) {
+      await this.bookingHoldService.releaseSeats(showtime_id, seat_ids, userId);// nếu lỗi thì release toan bo ghe của booking
+      throw e;
     }
 
-    await this.holdSeats(showtime_id, seat_ids, userId);
 
-    const createdBooking = await this.prisma.bookings.create({
-      data: {
-        showtime_id,
-        user_id: userId,
-        total_price,
-        created_by: userId,
-        booking_seats: { create: bookingSeatData },
+
+    // const createdBooking = await this.prisma.bookings.create({
+    //   data: {
+    //     showtime_id,
+    //     user_id: userId,
+    //     total_price,
+    //     created_by: userId,
+    //     booking_seats: { create: bookingSeatData },
+    //   },
+    //   include: { booking_seats: true },
+    // });
+    // //dùng redisClient helper + JSON + TTL tính bằng giây
+    // await this.cacheSetJSON(
+    //   `booking:${createdBooking.id}:seats`,
+    //   seat_ids,
+    //   Number(HOLD_TTL_SECONDS) || 300,
+    // );
+
+    // return createdBooking;
+  }
+
+  // async confirmPayment(bookingId: string, userId: string) {
+  //   const booking = await this.prisma.bookings.findUnique({ where: { id: bookingId } });
+  //   if (!booking) throw new NotFoundException('Booking not found');
+  //   if (booking.user_id !== userId) throw new ForbiddenException('Forbidden');
+  //   if (booking.status !== 'pending') throw new BadRequestException('Booking is not pending');
+
+  //   const seatIds = await this.cacheGetJSON<number[]>(`booking:${bookingId}:seats`);
+  //   if (!seatIds?.length) throw new BadRequestException('No held seats found for this booking');
+
+  //   if (!booking.showtime_id) throw new BadRequestException('Showtime ID is missing from booking');
+
+  //   const { total_price, bookingSeatData } =
+  //   await this.calculateTotalPriceAndSeatData(booking.showtime_id, seatIds, userId);
+
+  //   //await this.prisma.booking_seats.createMany({ data: bookingSeatData });
+
+  //   return this.prisma.bookings.update({
+  //     where: { id: bookingId },
+  //     data: {
+  //       status: 'success',
+  //       total_price,
+  //       updated_at: new Date(),
+  //       updated_by: userId,
+  //     },
+  //   });
+  // }
+
+  async findAllForAdmin(query: BookingListQueryDto) {
+    const { page, limit, skip } = this.normalizePagination(query.page, query.limit);
+    const where = this.buildBookingWhere(query);
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.bookings.findMany({
+        where,
+        select: this.bookingListSelect(),
+        orderBy: {
+          created_at: 'desc',
+        },
+        skip,
+        take: limit,
+      }),
+      this.prisma.bookings.count({ where }),
+    ]);
+
+    return {
+      items,
+      pagination: {
+        page,
+        limit,
+        total,
+        total_pages: Math.ceil(total / limit),
       },
-      include: { booking_seats: true },
-    });
-    //dùng redisClient helper + JSON + TTL tính bằng giây
-    await this.cacheSetJSON(
-      `booking:${createdBooking.id}:seats`,
-      seat_ids,
-      Number(HOLD_TTL_SECONDS) || 300,
-    );
-
-    return createdBooking;
-  }
-
-
-
-  async confirmPayment(bookingId: string, userId: string) {
-    const booking = await this.prisma.bookings.findUnique({ where: { id: bookingId } });
-    if (!booking) throw new NotFoundException('Booking not found');
-    if (booking.user_id !== userId) throw new ForbiddenException('Forbidden');
-    if (booking.status !== 'pending') throw new BadRequestException('Booking is not pending');
-
-    const seatIds = await this.cacheGetJSON<number[]>(`booking:${bookingId}:seats`);
-    if (!seatIds?.length) throw new BadRequestException('No held seats found for this booking');
-
-    if (!booking.showtime_id) throw new BadRequestException('Showtime ID is missing from booking');
-
-    const { total_price, bookingSeatData } =
-      await this.calculateTotalPriceAndSeatData(booking.showtime_id, seatIds, userId);
-
-    await this.prisma.booking_seats.createMany({ data: bookingSeatData });
-
-    return this.prisma.bookings.update({
-      where: { id: bookingId },
-      data: {
-        status: 'success',
-        total_price,
-        updated_at: new Date(),
-        updated_by: userId,
+      filters: {
+        status: query.status ?? null,
+        payment_status: query.payment_status ?? null,
+        movie_id: query.movie_id ?? null,
+        showtime_id: query.showtime_id ?? null,
+        from_date: query.from_date ?? null,
+        to_date: query.to_date ?? null,
+        search: query.search ?? null,
       },
-    });
+    };
   }
 
 
-
-  findAll() {
-    return this.prisma.bookings.findMany({
-      where: { is_deleted: false },
-      include: { booking_seats: true },
-    });
-  }
-
-  async findOne(id: string) {
+  async findOneForAdmin(id: string) {
     const booking = await this.prisma.bookings.findFirst({
-      where: { id, is_deleted: false },
-      include: { booking_seats: true },
+      where: {
+        id,
+        is_deleted: false,
+      },
+      select: this.bookingListSelect(),
     });
-    if (!booking) throw new NotFoundException('Booking not found');
+
+    if (!booking) {
+      throw new NotFoundException('Không tìm thấy booking');
+    }
+
+    return booking;
+  }
+
+  async findMyBookings(userId: string, query: BookingListQueryDto) {
+    const {page, limit, skip} = this.normalizePagination(query.page, query.limit);
+    const where = this.buildBookingWhere(query, userId);
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.bookings.findMany({
+        where,
+        select: this.bookingListSelect(),
+        orderBy: { created_at: 'desc' },
+        skip,
+        take: limit,
+    }),
+    this.prisma.bookings.count({ where }),
+    ]);
+    return {
+      items,
+      pagination:{
+        page,
+        limit,
+        total,
+        total_pages: Math.ceil(total / limit),
+      },
+      filters:{
+        status: query.status ?? null,
+        payment_status: query.payment_status ?? null,
+        movie_id: query.movie_id ?? null,
+        showtime_id: query.showtime_id ?? null,
+        from_date: query.from_date ?? null,
+        to_date: query.to_date ?? null,
+        search: query.search ?? null
+      },
+    };
+  }
+
+  async findMyBooking(id: string, userId: string) {
+    const booking = await this.prisma.bookings.findFirst({
+      where: { 
+        id, 
+        user_id: userId, 
+        is_deleted: false 
+      },
+      select: this.bookingListSelect(),
+    });
+    if (!booking) throw new NotFoundException('Không tìm thấy booking');
     return booking;
   }
 
   async cancel(id: string, userId: string) {
+    const booking = await this.prisma.bookings.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        user_id: true,
+        status: true,
+        is_deleted: true,
+      },
+    });
+
+    if (!booking || booking.is_deleted) {
+      throw new NotFoundException('Không tìm thấy booking');
+    }
+
+    if (booking.user_id !== userId) {
+      throw new ForbiddenException('Bạn không có quyền huỷ booking này');
+    }
+
+    if (booking.status !== BookingStatus.pending) {
+      throw new BadRequestException('Chỉ có thể huỷ booking đang chờ thanh toán');
+    }
+
+    await this.bookingHoldService.releaseBookingHold(id);
+
     return this.prisma.bookings.update({
       where: { id },
       data: {
-        is_deleted: true,
-        deleted_by: userId,
-        deleted_at: new Date(),
+        status: BookingStatus.cancelled,
+        //  is_deleted: true,
+        //   deleted_by: userId,
+        //   deleted_at: new Date(),
+        updated_by: userId,
+        updated_at: new Date(),
         booking_seats: {
           updateMany: {
-            where: {},
+            where: { is_deleted: false },
             data: {
-              is_deleted: true,
-              deleted_by: userId,
-              deleted_at: new Date(),
+              // is_deleted: true, 
+              // deleted_by: userId, 
+              // deleted_at: new Date(),
+              updated_by: userId,
+              updated_at: new Date(),
             },
           },
         },
       },
-    });
+      include: {
+        booking_seats: true
+      }
+    })
   }
+
+
 }
