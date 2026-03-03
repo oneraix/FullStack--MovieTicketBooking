@@ -197,9 +197,6 @@ private buildBookingWhere(
     }
   }
 
-
-
-
   private async calculateTotalPriceAndSeatData(
     showtimeId: string,
     seatIds: number[],

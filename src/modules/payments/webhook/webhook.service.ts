@@ -23,8 +23,8 @@ export class WebhookService {
 
 
   async handleEvent(signature: string, rawBody: Buffer) {
-    
-    
+
+
     if (!signature) {// kiểm tra có signatur không
       throw new BadRequestException('Không tìm thấy signature');
     }
@@ -55,6 +55,12 @@ export class WebhookService {
 
       if (!bookingId) throw new BadRequestException('Không tìm thấy booking_id');//đảm bảo có booking_id
 
+      //kiểm tra payment_intent có rỗng không
+      const paymentIntentId = typeof session.payment_intent === 'string'
+        ? session.payment_intent
+        : session.payment_intent?.id;
+      if (!paymentIntentId) throw new BadRequestException('Không tìm thấy payment_intent_id');
+
       const booking = await this.prisma.bookings.findUnique({
         where: { id: bookingId }
       });
@@ -73,7 +79,7 @@ export class WebhookService {
             booking_id: bookingId,
             method: session.payment_method_types?.[0] ?? 'card',
             status: PaymentStatus.success,
-            transaction_id: String(session.payment_intent ?? ''),//thay session.payment_intent as string thành String(session.payment_intent) ?? '' để đảm bảo chuỗi chuyển thành string và không crash nếu bị rỗng
+            transaction_id: paymentIntentId,//thay session.payment_intent as string thành String(session.payment_intent) ?? '' để đảm bảo chuỗi chuyển thành string và không crash nếu bị rỗng
             created_by: booking.user_id ?? undefined,
           },
         }),
@@ -123,6 +129,6 @@ export class WebhookService {
 
       return;
     }
-    
+
   }
 }
