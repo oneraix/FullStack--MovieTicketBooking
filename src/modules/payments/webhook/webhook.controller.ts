@@ -12,6 +12,7 @@ import {
 import { Request, Response } from 'express';
 import { WebhookService } from './webhook.service';
 
+
 @Controller('payments')
 export class WebhookController {
   constructor(private readonly webhookService: WebhookService) { }
@@ -21,7 +22,7 @@ export class WebhookController {
   async handleWebhook(@Req() req: RawBodyRequest<Request>, @Res() res: Response) {
     const sig = req.headers['stripe-signature'];
     const rawBody = req.rawBody;
-
+    console.log('✅ Stripe webhook endpoint hit');
     if (!rawBody) {
       console.error('❌ Missing raw body for Stripe webhook.');
       return res.status(400).send('Missing raw body');
@@ -36,4 +37,5 @@ export class WebhookController {
       return res.status(400).send(`Webhook Error: ${message}`);
     }
   }
+  
 }

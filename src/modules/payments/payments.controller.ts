@@ -15,7 +15,9 @@ export class PaymentsController {
   createCheckout(@Body() dto: CreatePaymentDto, @AuthUser('sub') userId: string) {
     return this.paymentsService.createCheckoutSession(dto, userId);
   }
+
   @Get('checkout')
+  @UseGuards(ProtectGuard, RolesGuard)
   getCheckoutSession(
     @Query('session_id') sessionId: string,
     @AuthUser('sub') userId:string,

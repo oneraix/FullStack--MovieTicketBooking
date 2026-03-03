@@ -9,6 +9,7 @@ import stripeConfig from 'src/config/stripe.config';
 import { IOREDIS_CLIENT } from 'src/common/redis/redis.provider';
 import Redis from 'ioredis';
 import { BookingHoldService } from 'src/modules/booking/booking-hold.service';
+import { BookingStatus, PaymentStatus } from 'generated/prisma';
 
 @Injectable()
 export class WebhookService {
@@ -22,7 +23,8 @@ export class WebhookService {
 
 
   async handleEvent(signature: string, rawBody: Buffer) {
-
+    
+    
     if (!signature) {// kiểm tra có signatur không
       throw new BadRequestException('Không tìm thấy signature');
     }
@@ -57,14 +59,12 @@ export class WebhookService {
         where: { id: bookingId }
       });
 
-      if (!booking || booking.status !== 'pending') return; //tránh trường hợp server chậm Stripe gửi trùng webhook dẫn đến update trùng booking
-
-
+      if (!booking || booking.status !== BookingStatus.pending) return; //tránh trường hợp server chậm Stripe gửi trùng webhook dẫn đến update trùng booking
       await this.prisma.$transaction([
         this.prisma.bookings.update({
           where: { id: bookingId },
           data: {
-            status: 'success',
+            status: BookingStatus.success,
             updated_at: new Date(),
           },
         }),
@@ -72,12 +72,13 @@ export class WebhookService {
           data: {
             booking_id: bookingId,
             method: session.payment_method_types?.[0] ?? 'card',
-            status: 'success',
+            status: PaymentStatus.success,
             transaction_id: String(session.payment_intent ?? ''),//thay session.payment_intent as string thành String(session.payment_intent) ?? '' để đảm bảo chuỗi chuyển thành string và không crash nếu bị rỗng
             created_by: booking.user_id ?? undefined,
           },
         }),
       ]);
+
       await this.bookingHoldService.deleteBookingHold(bookingId);// xoa booking hold sau khi thanh toán thánh công
       return;
       // await this.prisma.bookings.update({
@@ -88,7 +89,6 @@ export class WebhookService {
       //   },
       // });
     }
-
     if (event.type === 'payment_intent.payment_failed') {
       const intent = event.data.object as Stripe.PaymentIntent;
       const bookingId = intent.metadata?.booking_id;
@@ -96,10 +96,10 @@ export class WebhookService {
         await this.prisma.bookings.updateMany({
           where: {
             id: bookingId,
-            status: 'pending'
+            status: BookingStatus.pending,
           },
           data: {
-            status: 'failed',
+            status: BookingStatus.failed,
             updated_at: new Date(),
           },
         });
@@ -115,14 +115,14 @@ export class WebhookService {
       if (!bookingId) return;
 
       await this.prisma.bookings.updateMany({
-        where: { id: bookingId, status: 'pending' },
-        data: { status: 'expired', updated_at: new Date() },
+        where: { id: bookingId, status: BookingStatus.pending },
+        data: { status: BookingStatus.expired, updated_at: new Date() },
       });
 
       await this.bookingHoldService.releaseBookingHold(bookingId);
 
       return;
     }
-
+    
   }
 }

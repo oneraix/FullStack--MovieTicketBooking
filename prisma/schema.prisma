@@ -5,7 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 model audit_logs {
@@ -43,7 +43,7 @@ model bookings {
   id                               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id                          String?         @db.Uuid
   showtime_id                      String?         @db.Uuid
-  status                           String?         @default("pending") @db.VarChar(20)
+  status                           BookingStatus?  @default(pending)
   total_price                      Decimal?        @db.Decimal(10, 2)
   is_active                        Boolean?        @default(true)
   is_deleted                       Boolean?        @default(false)
@@ -145,23 +145,23 @@ model notifications {
 }
 
 model payments {
-  id                               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  booking_id                       String?   @db.Uuid
-  method                           String?   @db.VarChar(50)
-  status                           String?   @db.VarChar(20)
+  id                               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  booking_id                       String?        @db.Uuid
+  method                           String?        @db.VarChar(50)
+  status                           PaymentStatus? @default(pending)
   transaction_id                   String?
-  is_active                        Boolean?  @default(true)
-  is_deleted                       Boolean?  @default(false)
-  created_at                       DateTime? @default(now()) @db.Timestamp(6)
-  updated_at                       DateTime? @db.Timestamp(6)
-  deleted_at                       DateTime? @db.Timestamp(6)
-  created_by                       String?   @db.Uuid
-  updated_by                       String?   @db.Uuid
-  deleted_by                       String?   @db.Uuid
-  bookings                         bookings? @relation(fields: [booking_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  users_payments_created_byTousers users?    @relation("payments_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  users_payments_deleted_byTousers users?    @relation("payments_deleted_byTousers", fields: [deleted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  users_payments_updated_byTousers users?    @relation("payments_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  is_active                        Boolean?       @default(true)
+  is_deleted                       Boolean?       @default(false)
+  created_at                       DateTime?      @default(now()) @db.Timestamp(6)
+  updated_at                       DateTime?      @db.Timestamp(6)
+  deleted_at                       DateTime?      @db.Timestamp(6)
+  created_by                       String?        @db.Uuid
+  updated_by                       String?        @db.Uuid
+  deleted_by                       String?        @db.Uuid
+  bookings                         bookings?      @relation(fields: [booking_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_payments_created_byTousers users?         @relation("payments_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_payments_deleted_byTousers users?         @relation("payments_deleted_byTousers", fields: [deleted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_payments_updated_byTousers users?         @relation("payments_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model roles {
@@ -409,4 +409,19 @@ model ticket_prices {
   users_ticket_prices_created_byTousers users?    @relation("ticket_prices_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users_ticket_prices_deleted_byTousers users?    @relation("ticket_prices_deleted_byTousers", fields: [deleted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users_ticket_prices_updated_byTousers users?    @relation("ticket_prices_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+enum BookingStatus {
+  pending
+  success
+  failed
+  expired
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  success
+  failed
+  refunded
 }

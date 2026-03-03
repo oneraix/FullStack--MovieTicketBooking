@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StripeService } from 'src/common/stripe/stripe.service';
 import stripeConfig from 'src/config/stripe.config';
 import Stripe from 'stripe';
+import { BookingStatus } from 'generated/prisma';
 
 @Injectable()
 export class PaymentsService {
@@ -39,7 +40,7 @@ export class PaymentsService {
       throw new NotFoundException('Booking không tồn tại');
     }
 
-    if (booking.status !== 'pending') {
+    if (booking.status !== BookingStatus.pending) {
       throw new NotFoundException('Booking không đang chờ thanh toán');
     }
 
