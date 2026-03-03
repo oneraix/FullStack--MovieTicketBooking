@@ -45,56 +45,63 @@ export class WebhookService {
       throw new BadRequestException('Stripe signature không hợp lệ');//lỗi signature không hợp lệ đổi từ 500 thành 400
     }
 
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as Stripe.Checkout.Session;
+if (event.type === 'checkout.session.completed') {
+  const session = event.data.object as Stripe.Checkout.Session;
 
-      //kiểm tra đã paid chưa rồi mới xử lí
-      if (session.payment_status !== 'paid') return;
+  if (session.payment_status !== 'paid') return;
 
-      const bookingId = session.metadata?.booking_id;
+  const bookingId = session.metadata?.booking_id;
+  if (!bookingId) {
+    throw new BadRequestException('Không tìm thấy booking_id');
+  }
 
-      if (!bookingId) throw new BadRequestException('Không tìm thấy booking_id');//đảm bảo có booking_id
+  const paymentIntentId =
+    typeof session.payment_intent === 'string'
+      ? session.payment_intent
+      : session.payment_intent?.id;
 
-      //kiểm tra payment_intent có rỗng không
-      const paymentIntentId = typeof session.payment_intent === 'string'
-        ? session.payment_intent
-        : session.payment_intent?.id;
-      if (!paymentIntentId) throw new BadRequestException('Không tìm thấy payment_intent_id');
+  if (!paymentIntentId) {
+    throw new BadRequestException('Không tìm thấy payment_intent');
+  }
 
-      const booking = await this.prisma.bookings.findUnique({
-        where: { id: bookingId }
-      });
+  await this.prisma.$transaction(async (tx) => {
+    const updated = await tx.bookings.updateMany({
+      where: {
+        id: bookingId,
+        status: BookingStatus.pending,
+        is_deleted: false,
+      },
+      data: {
+        status: BookingStatus.success,
+        updated_at: new Date(),
+      },
+    });
 
-      if (!booking || booking.status !== BookingStatus.pending) return; //tránh trường hợp server chậm Stripe gửi trùng webhook dẫn đến update trùng booking
-      await this.prisma.$transaction([
-        this.prisma.bookings.update({
-          where: { id: bookingId },
-          data: {
-            status: BookingStatus.success,
-            updated_at: new Date(),
-          },
-        }),
-        this.prisma.payments.create({
-          data: {
-            booking_id: bookingId,
-            method: session.payment_method_types?.[0] ?? 'card',
-            status: PaymentStatus.success,
-            transaction_id: paymentIntentId,//thay session.payment_intent as string thành String(session.payment_intent) ?? '' để đảm bảo chuỗi chuyển thành string và không crash nếu bị rỗng
-            created_by: booking.user_id ?? undefined,
-          },
-        }),
-      ]);
-
-      await this.bookingHoldService.deleteBookingHold(bookingId);// xoa booking hold sau khi thanh toán thánh công
+    if (updated.count === 0) {
       return;
-      // await this.prisma.bookings.update({
-      //   where: { id: bookingId },
-      //   data: {
-      //     status: 'success',
-      //     updated_at: new Date(),
-      //   },
-      // });
     }
+
+    const booking = await tx.bookings.findUnique({
+      where: { id: bookingId },
+      select: { user_id: true },
+    });
+
+    await tx.payments.create({
+      data: {
+        booking_id: bookingId,
+        method: session.payment_method_types?.[0] ?? 'card',
+        status: PaymentStatus.success,
+        transaction_id: paymentIntentId,
+        created_by: booking?.user_id ?? undefined,
+      },
+    });
+  });
+
+  await this.bookingHoldService.deleteBookingHold(bookingId);
+  return;
+}
+
+    //xử lí booking và nhả ghế nếu thanh toán thấp bại
     if (event.type === 'payment_intent.payment_failed') {
       const intent = event.data.object as Stripe.PaymentIntent;
       const bookingId = intent.metadata?.booking_id;
@@ -114,7 +121,7 @@ export class WebhookService {
       return;
     }
 
-    //thêm logic xử lí booking và nhả ghế nếu hết hạn thời gian thanh toán
+    //logic xử lí booking và nhả ghế nếu hết hạn thời gian thanh toán
     if (event.type === 'checkout.session.expired') {
       const session = event.data.object as Stripe.Checkout.Session;
       const bookingId = session.metadata?.booking_id;
