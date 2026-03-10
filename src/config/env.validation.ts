@@ -3,9 +3,10 @@ import * as Joi from 'joi';
 
     NODE_ENV : Joi.string().valid('development','production','test').default('development'),
     PORT: Joi.number().default(3000),
+    FRONTEND_URL: Joi.string().uri().required(),
 
     //Database configuration
-    DATABASE_URL: Joi.string().required(),
+    DATABASE_URL: Joi.string().uri().required(),
 
     //Stripe configuration
     STRIPE_SECRET_KEY: Joi.string().required(),
@@ -17,7 +18,20 @@ import * as Joi from 'joi';
     REFRESH_TOKEN_SECRET: Joi.string().required(),
     REFRESH_TOKEN_EXPIRES: Joi.string().required(),
 
-    //Redis configuration
+    //Booking hold configuration
     HOLD_TTL_SECONDS: Joi.number().default(500),
 
+   //Redis configuration
+   REDIS_URL: Joi.string().uri().optional(),
+   REDIS_HOST: Joi.string()
+   .when('REDIS_URL', { 
+      is: Joi.exist(), 
+      then: Joi.optional(),
+      otherwise: Joi.required() }),
+   REDIS_PORT: Joi.number().port().default(6379),
+   REDIS_PASSWORD: Joi.string().allow('').optional(),
+
+   //Rate limit configuration
+   RATE_LIMIT_TTL: Joi.number().positive(),
+   RATE_LIMIT_LIMIT: Joi.number().positive(),
  })
