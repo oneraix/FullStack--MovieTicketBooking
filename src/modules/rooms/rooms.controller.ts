@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ParseIntPipe } from '@nestjs/common';
 import { RoomsService } from './rooms.service';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
@@ -21,14 +21,14 @@ export class RoomsController {
   @Patch(':id')
   @UseGuards(ProtectGuard, RolesGuard)
   @Roles('admin')
-  update(@Param('id') id: string, @Body() dto: UpdateRoomDto, @AuthUser('sub') userId: string) {
+  update(@Param('id',ParseIntPipe) id: string, @Body() dto: UpdateRoomDto, @AuthUser('sub') userId: string) {
     return this.roomsService.update(+id, dto, userId);
   }
 
   @Delete(':id')
   @UseGuards(ProtectGuard, RolesGuard)
   @Roles('admin')
-  remove(@Param('id') id: string,@AuthUser('sub') userId: string) {
+  remove(@Param('id',ParseIntPipe) id: string,@AuthUser('sub') userId: string) {
     return this.roomsService.softDelete(+id, userId);
   }
 
@@ -38,7 +38,7 @@ export class RoomsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id',ParseIntPipe) id: string) {
     return this.roomsService.findOne(+id);
   }
 

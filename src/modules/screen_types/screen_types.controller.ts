@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ParseIntPipe } from '@nestjs/common';
 import { ScreenTypesService } from './screen_types.service';
 import { CreateScreenTypeDto } from './dto/create-screen_type.dto';
 import { UpdateScreenTypeDto } from './dto/update-screen_type.dto';
@@ -23,21 +23,21 @@ export class ScreenTypesController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id',ParseIntPipe) id: string) {
     return this.screenTypesService.findOne(+id);
   }
 
   @Patch(':id')
   @UseGuards(ProtectGuard, RolesGuard)
   @Roles('admin')
-  update(@Param('id') id: string, @Body() dto: UpdateScreenTypeDto, @AuthUser('sub') userId: string) {
+  update(@Param('id',ParseIntPipe) id: string, @Body() dto: UpdateScreenTypeDto, @AuthUser('sub') userId: string) {
     return this.screenTypesService.update(+id, dto, userId);
   }
 
   @Delete(':id')
   @UseGuards(ProtectGuard, RolesGuard)
   @Roles('admin')
-  remove(@Param('id') id: string,@AuthUser('sub') userId: string) {
+  remove(@Param('id',ParseIntPipe) id: string,@AuthUser('sub') userId: string) {
     return this.screenTypesService.softDelete(+id, userId);
   }
  
