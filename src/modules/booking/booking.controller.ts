@@ -9,6 +9,7 @@ import {
   UseGuards,
   Req,
   Query,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 
 import { CreateBookingDto } from './dto/create-booking.dto';
@@ -42,7 +43,7 @@ export class BookingsController {
   @Get('me/:id')
   @Roles('user')
   findMyBooking(
-    @Param('id') id: string,
+    @Param('id',ParseUUIDPipe) id: string,
     @AuthUser('sub') userId: string,
   ) {
     return this.bookingsService.findMyBooking(id, userId);
@@ -50,7 +51,7 @@ export class BookingsController {
 
   @Delete(':id')
   @Roles('user')
-  cancel(@Param('id') id: string, @AuthUser('sub') userId: string) {
+  cancel(@Param('id',ParseUUIDPipe) id: string, @AuthUser('sub') userId: string) {
     return this.bookingsService.cancel(id,userId);
   }
 
@@ -63,7 +64,7 @@ export class BookingsController {
 
   @Get(':id')
   @Roles('admin')
-  findOneForAdmin(@Param('id') id: string) {
+  findOneForAdmin(@Param('id',ParseUUIDPipe) id: string) {
     return this.bookingsService.findOneForAdmin(id);
   }
 
