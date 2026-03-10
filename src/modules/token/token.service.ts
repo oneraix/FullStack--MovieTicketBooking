@@ -2,12 +2,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { 
-  ACCESS_TOKEN_EXPIRES,
-  ACCESS_TOKEN_SECRET,
-  REFRESH_TOKEN_EXPIRES,
-  REFRESH_TOKEN_SECRET,
-} from 'src/common/constant/app.constant';
 import jwtConfig from 'src/config/jwt.config';
 
 @Injectable()
@@ -15,7 +9,7 @@ export class TokenService {
   constructor(
     private readonly jwt: JwtService,
     @Inject(jwtConfig.KEY)
-    private readonly config: ConfigType<typeof jwtConfig>
+    private readonly jwtCfg: ConfigType<typeof jwtConfig>
   ) {}
 
   private buildPayload(user: any) {
@@ -38,14 +32,14 @@ export class TokenService {
     const [accessToken, refreshToken] = await Promise.all([
       //tạo token
       this.jwt.signAsync(payload, {
-        secret: this.config.accessTokenSecret,
-        expiresIn: this.config.accessTokenExpires,
+        secret: this.jwtCfg.accessTokenSecret,
+        expiresIn: this.jwtCfg.accessTokenExpires,
       }),
 
       //tạo refresh token
       this.jwt.signAsync(payload, {
-        secret: this.config.refreshTokenSecret,
-        expiresIn: this.config.refreshTokenExpires,
+        secret: this.jwtCfg.refreshTokenSecret,
+        expiresIn: this.jwtCfg.refreshTokenExpires,
       })
     ]);
 
@@ -59,7 +53,7 @@ export class TokenService {
    async verifyAccessToken(token: string) {
     try{
     return await this.jwt.verifyAsync(token, {
-      secret: this.config.accessTokenSecret,
+      secret: this.jwtCfg.accessTokenSecret,
     });
     }catch(error){
       throw error;
@@ -69,10 +63,17 @@ export class TokenService {
   async verifyRefreshToken(token: string) {
     try{
     return await this.jwt.verifyAsync(token, {
-      secret: this.config.refreshTokenSecret,
+      secret: this.jwtCfg.refreshTokenSecret,
     });
     }catch(error){
       throw error;
     }
   }
+
+  async getTokenRemainingTtl(token: string, secret: string): Promise<number>{
+      const decoded = await this.jwt.decode(token);
+      const now = Math.floor(Date.now()/1000);
+      return Math.max(decoded.exp - now, 0);
+  }
+
 }
