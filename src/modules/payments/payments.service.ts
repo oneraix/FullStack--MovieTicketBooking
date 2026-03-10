@@ -7,6 +7,8 @@ import { StripeService } from 'src/common/stripe/stripe.service';
 import stripeConfig from 'src/config/stripe.config';
 import Stripe from 'stripe';
 import { BookingStatus } from 'generated/prisma';
+import appConfig from 'src/config/app.config';
+import { PaymentListQueryDto } from './dto/payment-list.query.dto';
 
 @Injectable()
 export class PaymentsService {
@@ -15,9 +17,13 @@ export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stripeService: StripeService,
+
     @Inject(stripeConfig.KEY)
     private readonly config: ConfigType<typeof stripeConfig>,
-  ) { }
+
+    @Inject(appConfig.KEY)
+    private readonly appCfg: ConfigType<typeof appConfig>,
+  ) {}
 
   async createCheckoutSession(dto: CreatePaymentDto, userId: string) {
     const booking = await this.prisma.bookings.findUnique({
@@ -60,12 +66,14 @@ export class PaymentsService {
         quantity: 1,
       }));
 
+    const successUrl = `${this.appCfg.frontendUrl}/success?session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = `${this.appCfg.frontendUrl}/cancel`;
     const session = await this.stripeService.createCheckoutSession({
       mode: 'payment',
       payment_method_types: ['card'],
       line_items: lineItems,
-      success_url: 'http://localhost:3000/success?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: 'http://localhost:3000/cancel',
+      success_url: successUrl,//'http://localhost:3000/success?session_id={CHECKOUT_SESSION_ID}',
+      cancel_url: cancelUrl,//'http://localhost:3000/cancel',
       metadata: {
         booking_id: dto.booking_id,
       },
@@ -109,22 +117,45 @@ export class PaymentsService {
   }
 
   // ─── Admin: lấy tất cả payments ──────────────────────────────────────────
-  async findAll() {
-    return this.prisma.payments.findMany({
-      where: { is_deleted: false },
-      include: {
-        bookings: {
-          select: {
-            id: true,
-            status: true,
-            total_price: true,
-            user_id: true,
+  async findAll(query: PaymentListQueryDto) {
+    const safePage = query.page ?? 1;
+    const safeLimit = query.limit ?? 10;
+    const skip = (safePage -1)* safeLimit; 
+
+    const where = {
+      is_deleted: false,
+      ...(query.status && { status: query.status }),
+    };
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.payments.findMany({
+        where,
+        include:{
+          bookings:{
+            select:{
+              id: true,
+              status: true,
+              total_price: true,
+              user_id: true,
+            },
           },
         },
-      },
-      orderBy: { created_at: 'desc' },
-    });
-  }
+        orderBy: { created_at: 'desc' },
+        skip,
+        take: safeLimit,
+      }),
+      this.prisma.payments.count({ where }),
+    ]);
+    return{
+      items,
+      pagination:{
+        page: safePage,
+        limit: safeLimit,
+        total,
+        total_pages: Math.ceil(total / safeLimit),
+      }
+    }
+    }
+
 
   async findOne(id: string, userId: string) {
     const payment = await this.prisma.payments.findFirst({
