@@ -3,6 +3,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
 import { PrismaService } from '../prisma/prisma.service';
+import { MovieListQueryDto } from './dto/movie-list.query.dto';
+import { Prisma } from 'generated/prisma';
 
 @Injectable()
 export class MoviesService {
@@ -26,36 +28,35 @@ export class MoviesService {
     return movie;
   }
 
-  async findAll(query: { genre?: string; search?: string; is_showing?: string }) {
-    const { genre, search, is_showing } = query;
-
-    return this.prisma.movies.findMany({
-      where: {
-        is_deleted: false,
-        title: search ? { contains: search, mode: 'insensitive' } : undefined,
-        is_showing: is_showing ? is_showing === 'true' : undefined,
-        movie_movie_genres: genre
-          ? {
-              some: {
-                movie_genres: {
-                  name: {
-                    contains: genre,
-                    mode: 'insensitive',
-                  },
-                },
-              },
-            }
-          : undefined,
+async findAll(query: MovieListQueryDto) {
+  const safePage  = query.page  ?? 1;
+  const safeLimit = query.limit ?? 10;
+  const skip = (safePage - 1) * safeLimit;
+  const where: Prisma.moviesWhereInput = {
+    is_deleted: false,
+    ...(query.search && { title: { contains: query.search, mode: 'insensitive' } }),
+    ...(query.is_showing !== undefined && { is_showing: query.is_showing }),
+    ...(query.genre && {
+      movie_movie_genres: {
+        some: { movie_genres: { name: { contains: query.genre, mode: 'insensitive' } } },
       },
-      include: {
-        movie_movie_genres: {
-          include: {
-            movie_genres: true,
-          },
-        },
-      },
-    });
-  }
+    }),
+  };
+  const [items, total] = await this.prisma.$transaction([
+    this.prisma.movies.findMany({
+      where,
+      include: { movie_movie_genres: { include: { movie_genres: true } } },
+      orderBy: { created_at: 'desc' },
+      skip,
+      take: safeLimit,
+    }),
+    this.prisma.movies.count({ where }),
+  ]);
+  return {
+    items,
+    pagination: { page: safePage, limit: safeLimit, total, total_pages: Math.ceil(total / safeLimit) },
+  };
+}
 
   async findOne(id: string) {
     const movie = await this.prisma.movies.findFirst({
@@ -80,13 +81,14 @@ export class MoviesService {
     if (!existingMovie || existingMovie.is_deleted) throw new NotFoundException('Movie not found');
 
     // Nếu có cập nhật genre thì xóa trước rồi tạo lại
+    return this.prisma.$transaction(async(tx) =>{//add: wrap transaction tránh mất data khi crash
     if (genre_ids) {
-      await this.prisma.movie_movie_genres.deleteMany({
+      await tx.movie_movie_genres.deleteMany({
         where: { movie_id: id },
       });
     }
 
-    return this.prisma.movies.update({
+    return tx.movies.update({
       where: { id },
       data: {
         ...movieData,
@@ -102,6 +104,7 @@ export class MoviesService {
       },
     });
   }
+)}
 
   async softDelete(id: string, userId: string) {
     return this.prisma.movies.update({
