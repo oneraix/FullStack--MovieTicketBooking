@@ -6,6 +6,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 model audit_logs {
@@ -154,6 +155,7 @@ model payments {
   method                           String?        @db.VarChar(50)
   status                           PaymentStatus @default(pending)
   transaction_id                   String?        @unique
+  stripe_session_id                String?        @unique
   is_active                        Boolean?       @default(true)
   is_deleted                       Boolean?       @default(false)
   created_at                       DateTime?      @default(now()) @db.Timestamp(6)

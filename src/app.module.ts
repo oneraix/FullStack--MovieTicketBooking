@@ -28,6 +28,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { HealthModule } from './common/health/health.module';
 import { TicketPricesModule } from './ticket_prices/ticket_prices.module';
+import { ProtectGuard } from './modules/auth/protect/protect.guard';
 
 
 
@@ -87,6 +88,10 @@ import { TicketPricesModule } from './ticket_prices/ticket_prices.module';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ProtectGuard, 
     },
   ],
 })
