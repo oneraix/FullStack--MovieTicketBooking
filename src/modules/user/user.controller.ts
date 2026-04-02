@@ -4,11 +4,10 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UserListQueryDto } from './dto/user-list.query.dto';
 import { AuthUser } from 'src/common/decorator/auth-user.decorator';
-import { ProtectGuard } from '../auth/protect/protect.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
 import { Roles } from 'src/common/decorator/role.decorator';
 
-@UseGuards(ProtectGuard, RolesGuard)
+@UseGuards(RolesGuard)
 @Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}

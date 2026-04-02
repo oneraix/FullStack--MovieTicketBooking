@@ -2,8 +2,9 @@ import { Controller, Post, Body, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { SkipThrottle, Throttle } from '@nestjs/throttler';
-import { ProtectGuard } from './protect/protect.guard';
+import { Throttle } from '@nestjs/throttler';
+import { Public } from 'src/common/decorator/is-public.decorator';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 
 @Controller('auth')
@@ -13,24 +14,28 @@ export class AuthController {
   ) { }
 
   @Post('register')
+  @Public()
   async register(@Body() body: RegisterDto) {
     return await this.authService.register(body);
   }
 
-  @Throttle({default:{limit: 5, ttl: 60000}})
+ 
   @Post('login')
+  @Throttle({default:{limit: 5, ttl: 60000}})
+  @Public()
   async login(@Body() body: LoginDto) {
     return await this.authService.login(body);
   }
 
-  @UseGuards(ProtectGuard)
   @Post('logout')
-  async logout(@Body('refreshToken') refreshToken: string) {
-    return await this.authService.logout(refreshToken);
+  @Public()
+  async logout(@Body() body:RefreshTokenDto) {
+    return await this.authService.logout(body.refreshToken);
   }
 
   @Post('refresh-token')
-  refreshToken(@Body() body) {
+  @Public()
+  refreshToken(@Body() body: RefreshTokenDto) {
     return this.authService.refreshAccessToken(body);
   }
 

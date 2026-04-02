@@ -4,6 +4,9 @@ import { ConfigType } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import jwtConfig from 'src/config/jwt.config';
 
+
+
+
 @Injectable()
 export class TokenService {
   constructor(
@@ -12,17 +15,19 @@ export class TokenService {
     private readonly jwtCfg: ConfigType<typeof jwtConfig>
   ) {}
 
-  private buildPayload(user: any) {
+
+
+  private buildPayload(user: { id: string; email: string; name: string; roles?: { name: string } | null }) {
     return {
-      sub: user.id ?? user.userId,
+      sub: user.id ,
       email: user.email,
-      role: user.role ?? user.roles?.name,
+      role: user.roles?.name,
       name: user.name,
     };
   }
 
-  async createTokens(user: any) {
-    if (!user?.id && !user?.userId) {
+  async createTokens(user: { id: string; email: string; name: string; roles?: { name: string } | null }) {
+    if (!user?.id) {
       throw new Error('Không có userId để tạo token');
     }
 
@@ -70,10 +75,5 @@ export class TokenService {
     }
   }
 
-  async getTokenRemainingTtl(token: string, secret: string): Promise<number>{
-      const decoded = await this.jwt.decode(token);
-      const now = Math.floor(Date.now()/1000);
-      return Math.max(decoded.exp - now, 0);
-  }
 
 }
