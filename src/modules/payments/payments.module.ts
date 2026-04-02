@@ -5,7 +5,6 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { StripeModule } from 'src/common/stripe/stripe.module';
 import { WebhookController } from './webhook/webhook.controller';
 import { WebhookService } from './webhook/webhook.service';
-import { BookingHoldService } from '../booking/booking-hold.service';
 import { BookingModule } from '../booking/booking.module';
 
 @Module({

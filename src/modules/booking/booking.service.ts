@@ -1,17 +1,19 @@
 // bookings.service.ts
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { BookingHoldService } from './booking-hold.service';
-import { BookingStatus, Prisma } from 'generated/prisma';
+import { BookingStatus, PaymentStatus, Prisma } from 'generated/prisma';
 import { BookingListQueryDto } from './dto/booking-list.query.dto';
+import { StripeService } from 'src/common/stripe/stripe.service';
 
 @Injectable()
 export class BookingsService {
-
+    private readonly logger = new Logger(BookingsService.name);
   constructor(
     private prisma: PrismaService,
-    private readonly bookingHoldService: BookingHoldService
+    private readonly bookingHoldService: BookingHoldService,
+    private readonly stripeService: StripeService
   ) { }
 
   private normalizePagination(page?: number, limit?: number) {
@@ -207,17 +209,32 @@ export class BookingsService {
         show_date: true,
         show_time: true,
         base_price: true,
-        room_id: true, //dùng để validation tránh việc tạo booking cho ghế không tồn tại trong phòng
+        room_id: true,//dùng để validation tránh việc tạo booking cho ghế không tồn tại trong phòng
+        is_active: true,
+        is_deleted: true
       },
     });
 
-    if (!showtime) {
+    if (!showtime || showtime.is_deleted) {
       throw new NotFoundException('Showtime không tồn tại');
     }
 
     if (!showtime.room_id) {
       throw new BadRequestException('Phòng chiếu không tồn tại');
     }
+
+    if (!showtime.is_active) {
+      throw new BadRequestException('Suất chiếu bị tạm ngưng bán vé')
+    }
+
+    const showtimeDate = new Date(showtime.show_date);
+    const showtimeRef = new Date(showtime.show_time);
+    showtimeDate.setUTCHours(showtimeRef.getUTCHours(), showtimeRef.getUTCMinutes(), showtimeRef.getUTCSeconds());
+
+    if (showtimeDate.getTime() <= Date.now()) {
+      throw new BadRequestException('Suất chiếu đã diễn ra, không thể đặt vé')
+    }
+
 
     const dayOfWeek = new Date(showtime.show_date).getDay();
 
@@ -260,8 +277,8 @@ export class BookingsService {
 
   //create tạo booking(pending), booking_seats, giữ ghế bằng redis seatHold -> Paymentservice tạo session checkout -> webhook
   async create(dto: CreateBookingDto, userId: string) {
-    const acquired = await this.bookingHoldService.acquireBookingLock(userId);
-    if (!acquired) {
+    const lockValue = await this.bookingHoldService.acquireBookingLock(userId);
+    if (!lockValue) {
       throw new BadRequestException('Yêu cầu đang được xử lí, vui lòng thử lại');
     }
 
@@ -332,8 +349,8 @@ export class BookingsService {
         await this.bookingHoldService.releaseSeats(showtime_id, seat_ids, userId);// nếu lỗi thì release toan bo ghe của booking
         throw e;
       }
-    }finally{
-      await this.bookingHoldService.releaseBookingLock(userId);
+    } finally {
+      await this.bookingHoldService.releaseBookingLock(userId, lockValue);
     }
   }
 
@@ -461,34 +478,65 @@ export class BookingsService {
       throw new BadRequestException('Chỉ có thể huỷ booking đang chờ thanh toán');
     }
 
-    await this.bookingHoldService.releaseBookingHold(id);
-
-    return this.prisma.bookings.update({
-      where: { id },
-      data: {
-        status: BookingStatus.cancelled,
-        //  is_deleted: true,
-        //   deleted_by: userId,
-        //   deleted_at: new Date(),
-        updated_by: userId,
-        updated_at: new Date(),
-        booking_seats: {
-          updateMany: {
-            where: { is_deleted: false },
-            data: {
-              // is_deleted: true, 
-              // deleted_by: userId, 
-              // deleted_at: new Date(),
-              updated_by: userId,
-              updated_at: new Date(),
+    const cancelled = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.bookings.update({
+        where: { id },
+        data: {
+          status: BookingStatus.cancelled,
+          updated_by: userId,
+          updated_at: new Date(),
+          booking_seats: {
+            updateMany: {
+              where: { is_deleted: false },
+              data: {
+                updated_by: userId,
+                updated_at: new Date(),
+              },
             },
           },
         },
-      },
-      include: {
-        booking_seats: true
+        include: {
+          booking_seats: true
+        }
+      });
+
+      await tx.payments.updateMany({
+        where: { 
+          booking_id: id,
+          status: PaymentStatus.pending,
+          is_deleted: false 
+        },
+        data: {
+          status: PaymentStatus.failed,
+          updated_at: new Date(),
+        },
+      });
+      return result;
+    });
+
+    try{
+      await this.bookingHoldService.releaseBookingHold(id);
+    }catch(e){
+      this.logger.warn(`Không thể release hold for booking ${id}:${e.message}`);
+    }
+
+    try{
+      const pendingPayment = await this.prisma.payments.findFirst({
+        where:{
+          booking_id: id,
+          stripe_session_id: { not: null },
+        },
+        select:{stripe_session_id: true}
+      });
+      if(pendingPayment?.stripe_session_id){
+        await this.stripeService.expireCheckoutSession(pendingPayment.stripe_session_id);
       }
-    })
+    }catch{
+      // Stripe session có thể đã expire hoặc completed — không fail cancel
+      this.logger.warn(`Không thể huy checkout session for booking ${id}`);
+    }
+
+    return cancelled;
   }
 
 

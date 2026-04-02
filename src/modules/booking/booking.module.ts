@@ -1,14 +1,14 @@
 import { Module } from '@nestjs/common';
 import { BookingsController } from './booking.controller';
 import { BookingsService } from './booking.service';
-import { PrismaService } from '../prisma/prisma.service';
 import { BookingHoldService } from './booking-hold.service';
-import { BookingListQueryDto } from './dto/booking-list.query.dto';
+import { StripeModule } from 'src/common/stripe/stripe.module';
 
 
 @Module({
+  imports: [StripeModule],
   controllers: [BookingsController],
-  providers: [BookingsService, PrismaService, BookingHoldService, BookingListQueryDto],
+  providers: [BookingsService,  BookingHoldService, ],
   exports:[BookingHoldService]
 })
 export class BookingModule { }

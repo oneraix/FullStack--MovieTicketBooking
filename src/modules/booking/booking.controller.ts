@@ -20,7 +20,7 @@ import { RolesGuard } from 'src/common/guard/roles.guard';
 import { Roles } from 'src/common/decorator/role.decorator';
 import { BookingListQueryDto } from './dto/booking-list.query.dto';
 
-@UseGuards(ProtectGuard, RolesGuard)
+@UseGuards(RolesGuard)
 @Controller('bookings')
 export class BookingsController {
   constructor(private readonly bookingsService: BookingsService) {}

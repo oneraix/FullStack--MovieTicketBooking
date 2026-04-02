@@ -5,6 +5,7 @@ import { BookingHoldCache } from "./types/booking-hold-cache";
 import { IOREDIS_CLIENT } from 'src/common/redis/redis.provider';
 import redisConfig from "src/config/redis.config";
 import { ConfigType } from "@nestjs/config";
+import { randomUUID } from "crypto";
 
 
 @Injectable()
@@ -53,14 +54,20 @@ export class BookingHoldService {
     async deleteBookingHold(bookingId: string) {
         await this.redisClient.del(this.getBookingHoldKey(bookingId));
     }
-    async acquireBookingLock(userId: string): Promise<boolean> {
+
+    // Trả về lockValue nếu acquired, null nếu khôn
+    async acquireBookingLock(userId: string): Promise<string | null> {
         const key = `booking_create_lock:${userId}`;
+        const lockValue = randomUUID();
         // NX = chỉ set nếu chưa có, EX = tự hết hạn sau 10s
-        const result = await (this.redisClient as any).call('SET', key, '1', 'NX', 'EX', '10');
-        return result === 'OK';
+        const result = await (this.redisClient as any).call('SET', key, lockValue, 'NX', 'EX', '10');
+        return result === 'OK' ? lockValue : null;
     }
-    async releaseBookingLock(userId: string): Promise<void> {
-        await this.redisClient.del(`booking_create_lock:${userId}`);
+
+    //value khớp thì mới cho release
+    async releaseBookingLock(userId: string, lockValue: string): Promise<void> {
+        const key = `booking_create_lock:${userId}`;
+        await this.redisClient.eval(this.SAFE_RELEASE_LUA_SCRIPT,1,key, lockValue);
     }
 
     async holdSeats(showtimeId: string, seatIds: number[], userId: string) {
@@ -76,7 +83,7 @@ export class BookingHoldService {
         if (failed) {
             const lockedByThis = seatIds.filter((_, i) => results?.[i][1] === 'OK',);
             if (lockedByThis.length > 0) {
-                await this.releaseSeats(showtimeId, seatIds, userId);
+                await this.releaseSeats(showtimeId, lockedByThis, userId);
             }
             throw new BadRequestException('Một hoặc nhiều ghế đang được giữ bởi người khác');
         }
@@ -98,4 +105,17 @@ export class BookingHoldService {
         await this.releaseSeats(hold.showtimeId, hold.seatIds, hold.userId);
         await this.deleteBookingHold(bookingId);
     }
+
+    async acquirePaymentLock(bookingId: string): Promise<string|null>{
+        const key = `payment_create_lock:${bookingId}`;
+        const lockValue = randomUUID();
+        const result = await (this.redisClient as any).call('SET', key, lockValue, 'NX', 'EX', '15');
+        return result === `OK`? lockValue: null;
+    }
+    
+    async releasePaymentLock(bookingId:string, lockValue:string): Promise<void>{
+        const key = `payment_create_lock:${bookingId}`;
+        await this.redisClient.eval(this.SAFE_RELEASE_LUA_SCRIPT,1,key, lockValue);
+    }
 }
+

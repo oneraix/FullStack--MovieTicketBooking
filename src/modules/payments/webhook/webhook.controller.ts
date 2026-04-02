@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { WebhookService } from './webhook.service';
+import { Public } from 'src/common/decorator/is-public.decorator';
 
 
 @Controller('payments')
@@ -20,6 +21,7 @@ export class WebhookController {
   constructor(private readonly webhookService: WebhookService) { }
 
   @Post('webhook')
+  @Public()
   @HttpCode(200)
   async handleWebhook(@Req() req: RawBodyRequest<Request>, @Res() res: Response) {
     const sig = req.headers['stripe-signature'];
