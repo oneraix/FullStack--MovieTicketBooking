@@ -1,5 +1,5 @@
 // dto/create-booking.dto.ts
-import { IsArray, IsNotEmpty, IsNumber, IsOptional, IsUUID } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsInt, IsNotEmpty, IsNumber, IsOptional, IsUUID, Min } from 'class-validator';
 
 export class CreateBookingDto {
   @IsUUID()
@@ -7,6 +7,9 @@ export class CreateBookingDto {
   showtime_id: string;
 
   @IsArray()
-  @IsNotEmpty()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(8)
+  @IsInt({ each: true })
+  @Min(1,{each: true})
   seat_ids: number[];
 }

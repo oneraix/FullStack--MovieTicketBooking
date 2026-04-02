@@ -8,6 +8,7 @@ import {
   IsBoolean,
   IsArray,
   ArrayNotEmpty,
+  Min,
 } from 'class-validator';
 
 export class CreateMovieDto {
@@ -17,6 +18,7 @@ export class CreateMovieDto {
 
   @IsInt()
   @IsOptional()
+  @Min(1)
   duration?: number;
 
   @IsString()

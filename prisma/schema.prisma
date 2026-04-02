@@ -6,6 +6,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 model audit_logs {
@@ -37,13 +38,15 @@ model booking_seats {
   users_booking_seats_deleted_byTousers users?    @relation("booking_seats_deleted_byTousers", fields: [deleted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
   seats                                 seats?    @relation(fields: [seat_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users_booking_seats_updated_byTousers users?    @relation("booking_seats_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  @@index([booking_id])
+  @@index([seat_id])
 }
 
 model bookings {
   id                               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id                          String?         @db.Uuid
   showtime_id                      String?         @db.Uuid
-  status                           BookingStatus?  @default(pending)
+  status                           BookingStatus  @default(pending)
   total_price                      Decimal?        @db.Decimal(10, 2)
   is_active                        Boolean?        @default(true)
   is_deleted                       Boolean?        @default(false)
@@ -60,6 +63,8 @@ model bookings {
   users_bookings_updated_byTousers users?          @relation("bookings_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users_bookings_user_idTousers    users?          @relation("bookings_user_idTousers", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   payments                         payments[]
+  @@index([user_id,status,created_at])
+  @@index([showtime_id, status,created_at])
 }
 
 model bookmarks {
@@ -148,8 +153,9 @@ model payments {
   id                               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   booking_id                       String?        @db.Uuid
   method                           String?        @db.VarChar(50)
-  status                           PaymentStatus? @default(pending)
-  transaction_id                   String?
+  status                           PaymentStatus @default(pending)
+  transaction_id                   String?        @unique
+  stripe_session_id                String?        @unique
   is_active                        Boolean?       @default(true)
   is_deleted                       Boolean?       @default(false)
   created_at                       DateTime?      @default(now()) @db.Timestamp(6)
@@ -162,6 +168,7 @@ model payments {
   users_payments_created_byTousers users?         @relation("payments_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users_payments_deleted_byTousers users?         @relation("payments_deleted_byTousers", fields: [deleted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users_payments_updated_byTousers users?         @relation("payments_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  @@index([booking_id, status, created_at])
 }
 
 model roles {
@@ -214,6 +221,7 @@ model showtimes {
   movies                            movies?    @relation(fields: [movie_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   rooms                             rooms?     @relation(fields: [room_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users_showtimes_updated_byTousers users?     @relation("showtimes_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  @@index([room_id,show_date,show_time])
 }
 
 model user_watch_history {

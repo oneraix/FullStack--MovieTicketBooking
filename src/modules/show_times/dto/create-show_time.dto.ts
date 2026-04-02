@@ -1,13 +1,18 @@
-import { IsDateString, IsDecimal, IsInt, IsUUID } from "class-validator";
+import { Type } from "class-transformer";
+import { IsDateString, IsInt, IsNotEmpty, IsNumber, IsUUID, Min } from "class-validator";
 
 export class CreateShowtimeDto {
+  @IsNotEmpty()
   @IsUUID()
   movie_id: string;
 
+  @Min(1)
   @IsInt()
   room_id: number;
 
-  @IsDecimal()
+  @Type(()=>Number)
+  @IsNumber({maxDecimalPlaces: 2})
+  @Min(0)
   base_price: number;
 
   @IsDateString()

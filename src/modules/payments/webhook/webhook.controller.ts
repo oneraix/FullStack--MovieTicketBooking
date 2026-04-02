@@ -8,24 +8,27 @@ import {
   Req,
   Res,
   HttpCode,
+  Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { WebhookService } from './webhook.service';
+import { Public } from 'src/common/decorator/is-public.decorator';
 
 
 @Controller('payments')
 export class WebhookController {
+  private readonly logger = new Logger(WebhookController.name);
   constructor(private readonly webhookService: WebhookService) { }
 
   @Post('webhook')
+  @Public()
   @HttpCode(200)
   async handleWebhook(@Req() req: RawBodyRequest<Request>, @Res() res: Response) {
     const sig = req.headers['stripe-signature'];
     const rawBody = req.rawBody;
-    console.log('✅ Stripe webhook endpoint hit');
     if (!rawBody) {
-      console.error('❌ Missing raw body for Stripe webhook.');
-      return res.status(400).send('Missing raw body');
+      this.logger.error('Khong co rawbody')
+      return res.status(400).send('Không tìm thấy raw body');
     }
 
     try {
@@ -33,7 +36,7 @@ export class WebhookController {
       return res.send({ received: true });
     } catch (err) {
       const message = err instanceof Error? err.message : 'Unknown error';
-      console.error('❌ Error processing Stripe webhook:', message);  
+      this.logger.error('lỗi xử lí webhook: ', message)
       return res.status(400).send(`Webhook Error: ${message}`);
     }
   }
