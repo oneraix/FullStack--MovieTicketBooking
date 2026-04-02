@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class MovieListQueryDto {
@@ -15,6 +15,7 @@ export class MovieListQueryDto {
 
     @IsOptional()
     @IsString()
+    @MaxLength(100)
     search?: string;
 
     @IsOptional()

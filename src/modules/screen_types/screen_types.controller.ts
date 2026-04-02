@@ -11,7 +11,7 @@ import { AuthUser } from 'src/common/decorator/auth-user.decorator';
 export class ScreenTypesController {
   constructor(private readonly screenTypesService: ScreenTypesService) {}
  @Post()
- @UseGuards(ProtectGuard, RolesGuard)
+ @UseGuards(RolesGuard)
   @Roles('admin')
   create(@Body() dto: CreateScreenTypeDto, @AuthUser('sub') userId: string) {
     return this.screenTypesService.create(dto, userId);
@@ -28,14 +28,14 @@ export class ScreenTypesController {
   }
 
   @Patch(':id')
-  @UseGuards(ProtectGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles('admin')
   update(@Param('id',ParseIntPipe) id: string, @Body() dto: UpdateScreenTypeDto, @AuthUser('sub') userId: string) {
     return this.screenTypesService.update(+id, dto, userId);
   }
 
   @Delete(':id')
-  @UseGuards(ProtectGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles('admin')
   remove(@Param('id',ParseIntPipe) id: string,@AuthUser('sub') userId: string) {
     return this.screenTypesService.softDelete(+id, userId);

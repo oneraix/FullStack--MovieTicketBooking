@@ -11,7 +11,7 @@ import { RolesGuard } from 'src/common/guard/roles.guard';
 export class SeatTypesController {
   constructor(private readonly seatTypesService: SeatTypesService) {}
   @Post()
-  @UseGuards(ProtectGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles('admin')
   create(@Body() dto: CreateSeatTypeDto,@AuthUser('sub') userId: string) {
     return this.seatTypesService.create(dto, userId);
@@ -28,14 +28,14 @@ export class SeatTypesController {
   }
 
   @Patch(':id')
-  @UseGuards(ProtectGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles('admin')
   update(@Param('id',ParseIntPipe) id: string, @Body() dto: UpdateSeatTypeDto, @AuthUser('sub') userId: string) {
     return this.seatTypesService.update(+id, dto, userId);
   }
 
   @Delete(':id')
-  @UseGuards(ProtectGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles('admin')
   remove(@Param('id',ParseIntPipe) id: string, @AuthUser('sub') userId: string) {
     return this.seatTypesService.softDelete(+id,userId);

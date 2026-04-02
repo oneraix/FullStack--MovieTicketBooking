@@ -6,7 +6,7 @@ import { TicketPricesService } from "./ticket_prices.service";
 import { CreateTicketPriceDto } from "./dto/create-ticket_price.dto";
 import { AuthUser } from "src/common/decorator/auth-user.decorator";
 
-@UseGuards(ProtectGuard, RolesGuard)
+@UseGuards(RolesGuard)
 @Roles('admin')
 @Controller('ticket-prices')
 
